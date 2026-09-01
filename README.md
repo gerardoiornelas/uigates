@@ -66,7 +66,9 @@ Each promoted artifact must link to its source, supporting evidence, and reuse g
 
 ```text
 docs/                 # Public system specification
-skills/ui-gates/      # Codex-ready skill foundation
+skills/uig/           # Portable short-form skill: `uig`
+skills/ui-gates/      # Formal UI-GATES skill
+plugins/uigates/      # Installable Codex plugin
 ```
 
 Project integrations should keep their own committed local context bundles and generated Graphify outputs. See [the integration model](docs/architecture.md).
@@ -81,4 +83,6 @@ This is the documentation-first reference implementation. The initial objective 
 - [Knowledge model](docs/knowledge-model.md)
 - [Terminology](docs/terminology.md)
 - [Roadmap](docs/roadmap.md)
+- [Namespace and installation](docs/namespace.md)
+- [Short `uig` skill](skills/uig/SKILL.md)
 - [UI-GATES skill](skills/ui-gates/SKILL.md)
