@@ -1,0 +1,4 @@
+# Generated retrieval artifacts. Committed OKF pages remain the source of truth.
+graphify-out/
+.graphify_analysis.json
+.graphify_labels.json
