@@ -46,7 +46,7 @@ Build agents whose useful work compounds without granting them ambient authority
 3. **Plan** — propose the smallest vertical slices and acceptance evidence.
 4. **Propose** — name the exact action, scope, risk, and authority requested.
 5. **Authorize** — UI-GATE allows, denies, or escalates the proposal.
-6. **Execute** — perform only the authorized action.
+6. **Execute** — perform only the authorized action. After each step, record Expected/Actual/Delta; on a delta, return to Plan and address the root cause before retrying.
 7. **Verify** — gather proportionate, reproducible evidence.
 8. **Receipt** — preserve why the action happened, its authority, result, and verification.
 9. **Synthesize** — the Knowledge Steward promotes warranted learning.
