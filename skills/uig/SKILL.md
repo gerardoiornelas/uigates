@@ -18,7 +18,7 @@ Reasoning proposes. Authority decides. Verified work synthesizes into reusable k
 3. Discover and plan the smallest useful vertical slice and its verification evidence.
 4. Before consequential action, state the action, affected resource, reason, impact, risk, requested authority, and verification plan.
 5. Classify authority as **observe**, **delegated**, **gated**, or **prohibited**. Execute only delegated work within its stated scope. Request approval immediately before a gated action.
-6. Execute and verify. Do not claim success without evidence.
+6. Execute and verify. After each step, record Expected/Actual/Delta. Do not claim success without evidence, and do not retry on a delta without first returning to planning to address its root cause.
 7. Record a task receipt and promote only warranted learning: Ephemeral → Task → Decision → Pattern → Canon. Each durable artifact must retain provenance to its source and evidence.
 
 ## Stop conditions

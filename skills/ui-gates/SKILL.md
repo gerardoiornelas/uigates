@@ -22,8 +22,13 @@ Reasoning proposes. Authority decides. Verified work synthesizes into reusable k
 1. **Discover and plan** — identify the smallest useful vertical slice and its verification evidence.
 2. **Propose** — before consequential action, state the action, affected resource, reason, impact, risk, requested authority, and verification plan.
 3. **Authorize** — classify the proposal as observe, delegated, gated, or prohibited. Execute only delegated work within the stated scope. Request approval immediately before gated actions.
-4. **Execute and verify** — implement only what is authorized. Run the relevant repository checks; do not claim success without evidence.
-5. **Receipt and synthesis** — create or update the task receipt. Classify learning using the promotion ladder. Promote only decisions, patterns, and canon supported by evidence.
+4. **Execute and verify** — implement only what is authorized. After each execution step, record an observation:
+   - **Expected** — the outcome the plan predicted.
+   - **Actual** — the raw result (test output, logs, diff, browser state).
+   - **Delta** — where actual diverges from expected, or "none."
+
+   Do not claim success without evidence. If a delta exists, do not immediately retry — return to **Discover and plan** and revise the plan to account for the gap's root cause, then re-propose only if the revision changes the requested authority or scope.
+5. **Receipt and synthesis** — create or update the task receipt. If the loop needed more than one pass, note in the receipt what the final delta-free observation confirmed and what the earlier deltas revealed. Classify learning using the promotion ladder. Promote only decisions, patterns, and canon supported by evidence.
 
 ## Knowledge promotion
 

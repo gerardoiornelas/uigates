@@ -49,6 +49,10 @@ receipt:
     policy: policy-id
   result:
     commit: git-sha
+  observations: # per-step Execute log; omit for a single-step loop
+    - expected: <planned outcome of the step>
+      actual: <raw result: test/log/diff/browser state>
+      delta: <gap from expected, or "none">
   verification:
     tests: pass
   provenance:
