@@ -1,9 +1,9 @@
-import { StateStore } from './core/StateStore';
-import { GovernanceEngine } from './core/GovernanceEngine';
-import { ReceiptStore } from './core/ReceiptStore';
-import { LoopDriver } from './intelligence/loop/driver';
-import { CESynthesizer } from './intelligence/ce/synthesizer';
-import { Intent } from './core/types/primitives';
+import { StateStore } from './StateStore';
+import { GovernanceEngine } from './GovernanceEngine';
+import { ReceiptStore } from './ReceiptStore';
+import { LoopDriver } from '../intelligence/loop/driver';
+import { CESynthesizer } from '../intelligence/ce/synthesizer';
+import { Intent } from './types/primitives';
 
 async function runFullCycle() {
   console.log('=== UI-GATES: FULL AGENTIC CYCLE DEMO ===\n');
@@ -32,7 +32,7 @@ async function runFullCycle() {
   console.log(`\n[2] Intelligence loop completed.`);
 
   // 3. Synthesize Knowledge (Compound Engineering)
-  const synthesizer = new CESynthesizer(receiptStore);
+  const synthesizer = new CESynthesizer(receiptStore, process.cwd(), govEngine.ledger);
   await synthesizer.synthesize(myIntent.id);
   console.log(`\n[3] Knowledge synthesized into Compound Packs.`);
 

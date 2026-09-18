@@ -58,7 +58,7 @@ async function runCompoundingTest() {
   const projectRoot = process.cwd();
   const store = new StateStore(projectRoot);
   const receiptStore = new ReceiptStore();
-  const synthesizer = new CESynthesizer(receiptStore, projectRoot);
+  const synthesizer = new CESynthesizer(receiptStore, projectRoot, 'unverified'); // this demo has no governance layer
   const worker = new CompoundingWorker();
 
   const intent: Intent = {

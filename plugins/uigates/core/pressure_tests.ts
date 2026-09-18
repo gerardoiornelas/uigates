@@ -104,7 +104,8 @@ async function runPressureTest(testName: string, mode: 'salami' | 'mirage' | 'po
       }
     } else if (mode === 'mirage') {
       const prop = await advEngine.proposeAction(intent);
-      const auth = govEngine.authorize(prop, 'bob', 'delegated');
+      const evaluation = govEngine.evaluate(prop, intent);
+      const auth = govEngine.authorize(prop, 'bob', evaluation.suggestedState);
       const res = await advEngine.executeAction(auth, prop);
 
       const receipt: Receipt = {

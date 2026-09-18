@@ -21,6 +21,8 @@ export interface Intent {
   constraints: string[];
   successEvidence: string[];
   authorityDomain: string[]; // Resources/Scopes the intent covers
+  /** When set, only these actors may act under the intent. Omitted = any actor the principal lets propose. */
+  authorizedActors?: string[];
   expiry: Date;
   createdAt: Date;
 }
@@ -37,8 +39,23 @@ export interface Proposal {
   authorityRequested: AuthorityState;
   verificationPlan: string;
   proposedAt: Date;
+  /**
+   * Names the unit of work this proposal advances, so the engine can tell a retry from new work.
+   * Without it a proposal is never treated as a retry.
+   */
+  taskId?: string;
+  /**
+   * Required when the task's latest receipt ended in a delta: "do not retry on a delta without
+   * first returning to planning to address its root cause" (skills/uig). The engine checks that
+   * the replan exists and cites the failing receipt; it cannot judge whether the replan is sound.
+   */
+  replan?: { after: string; rootCause: string; revision: string };
 }
 
+/**
+ * Authority is time-, actor-, action-, resource- and intent-bounded (architecture.md),
+ * so the authorization carries each of those bounds itself.
+ */
 export interface Authorization {
   id: string;
   proposalId: string;
@@ -46,6 +63,10 @@ export interface Authorization {
   state: AuthorityState;
   authorizedAt: Date;
   expiry?: Date;
+  actorId: string;
+  intentId: string;
+  action: string;
+  resource: string;
 }
 
 export interface Receipt {
@@ -59,6 +80,7 @@ export interface Receipt {
   delta: string;
   evidence: string[]; // Links to logs, test results, commit hashes
   verifiedAt: Date;
+  taskId?: string; // the Proposal.taskId this execution advanced
 }
 
 export interface Policy {

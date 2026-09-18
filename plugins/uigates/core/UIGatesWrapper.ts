@@ -1,7 +1,5 @@
-import {
-  GovernanceEngine,
-  ReceiptStore
-} from './GovernanceEngine';
+import { GovernanceEngine } from './GovernanceEngine';
+import { ReceiptStore } from './ReceiptStore';
 import {
   Intent,
   Proposal,
@@ -65,7 +63,7 @@ export class UIGatesWrapper {
       if (evaluation.suggestedState === 'gated') {
         console.log(`[UI-GATES] Action GATED. Requesting Principal authorization...`);
         // Simulation: In a real tool, this would pause for human input
-        console.log(`[Principal] Authorizing ${proposal.action} as ${AuthorityState.delegated}...`);
+        console.log(`[Principal] Authorizing ${proposal.action} as ${evaluation.suggestedState}...`);
       }
 
       const auth = this.govEngine.authorize(proposal, principalId, evaluation.suggestedState);

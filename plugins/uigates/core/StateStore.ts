@@ -2,6 +2,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Intent, Proposal, Authorization, Receipt } from './types/primitives';
 
+/** Authority and audit records are write-once: rewriting one would rewrite history. */
+function writeOnce(filePath: string, value: unknown): void {
+  const text = JSON.stringify(value, null, 2);
+  if (fs.existsSync(filePath)) {
+    if (fs.readFileSync(filePath, 'utf8') === text) return;
+    throw new Error(`${path.basename(filePath)} already exists with different content; UI-GATES records are write-once.`);
+  }
+  fs.writeFileSync(filePath, text, { flag: 'wx' });
+}
+
 export class StateStore {
   private baseDir: string;
 
@@ -24,7 +34,7 @@ export class StateStore {
 
   saveIntent(intent: Intent): void {
     const filePath = path.join(this.baseDir, 'intents', `${intent.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(intent, null, 2));
+    writeOnce(filePath, intent);
   }
 
   getIntent(id: string): Intent | null {
@@ -37,7 +47,7 @@ export class StateStore {
 
   saveProposal(proposal: Proposal): void {
     const filePath = path.join(this.baseDir, 'proposals', `${proposal.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(proposal, null, 2));
+    writeOnce(filePath, proposal);
   }
 
   getProposal(id: string): Proposal | null {
@@ -57,7 +67,7 @@ export class StateStore {
 
   saveAuthorization(auth: Authorization): void {
     const filePath = path.join(this.baseDir, 'authorizations', `${auth.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(auth, null, 2));
+    writeOnce(filePath, auth);
   }
 
   getAuthorization(id: string): Authorization | null {
@@ -70,7 +80,7 @@ export class StateStore {
 
   saveReceipt(receipt: Receipt): void {
     const filePath = path.join(this.baseDir, 'receipts', `${receipt.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(receipt, null, 2));
+    writeOnce(filePath, receipt);
   }
 
   getReceipt(id: string): Receipt | null {

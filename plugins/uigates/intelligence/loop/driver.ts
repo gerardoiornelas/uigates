@@ -9,7 +9,7 @@ import { Intent } from '../../core/types/primitives';
  * Mock Worker Engine for the Ralph Loop
  */
 class RalphWorker implements IntelligenceEngine {
-  async proposeAction(intent: Intent) {
+  async proposeAction(intent: Intent): Promise<never> {
     throw new Error('RalphWorker does not propose; it executes tasks from FIX_PLAN.md');
   }
 
@@ -52,7 +52,8 @@ export class LoopDriver {
       console.log(`\n--- Next Task: ${task.id} ---`);
 
       // 1. Propose via AIDD
-      const proposal = await aidd.createProposalForTask(intent, task);
+      // The worker that executes is the actor the authorization is issued to.
+      const proposal = { ...(await aidd.createProposalForTask(intent, task)), actorId: 'ralph-worker' };
 
       // 2. Authorize via Governance
       const evalResult = this.govEngine.evaluate(proposal, intent);
@@ -81,7 +82,7 @@ export class LoopDriver {
 
           // Record the receipt
           this.receiptStore.record({
-            id: `rec_${Date.now()}`,
+            id: `rec_${task.id}_${Date.now()}`,
             authorizationId: auth.id,
             intentId: intent.id,
             actorId: 'ralph-worker',

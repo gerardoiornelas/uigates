@@ -74,9 +74,9 @@ async function main() {
 
     case 'authorize': {
       const propId = args[1];
-      const state = (args[2] as AuthorityState) || 'delegated';
+      const state = args[2] as AuthorityState | undefined;
       if (!propId) {
-        console.error('Usage: uig authorize <propId> [delegated|gated|prohibited]');
+        console.error('Usage: uig authorize <propId> [state]  (must match the evaluated state; omit to accept it)');
         process.exit(1);
       }
 
@@ -86,16 +86,26 @@ async function main() {
         process.exit(1);
       }
 
-      const auth: Authorization = {
-        id: `auth_${Date.now()}`,
-        proposalId: proposal.id,
-        authorizedBy: 'current_user',
-        state: state,
-        authorizedAt: new Date(),
-      };
+      const intent = store.getIntent(proposal.intentId);
+      if (!intent) {
+        console.error('Intent not found.');
+        process.exit(1);
+      }
+
+      // Authority is only issued for what the engine evaluates, in the principal's name.
+      const evaluation = govEngine.evaluate(proposal, intent);
+      if (evaluation.denied) {
+        console.error(`Denied: ${evaluation.rationale}`);
+        process.exit(1);
+      }
+      if (state && state !== evaluation.suggestedState) {
+        console.error(`Cannot authorize as ${state}: evaluation resolved to ${evaluation.suggestedState}. ${evaluation.rationale}`);
+        process.exit(1);
+      }
+      const auth: Authorization = govEngine.authorize(proposal, intent.principalId, evaluation.suggestedState);
 
       store.saveAuthorization(auth);
-      console.log(`UI-GATES: Proposal ${propId} authorized as ${state}.`);
+      console.log(`UI-GATES: Proposal ${propId} authorized as ${auth.state}.`);
       break;
     }
 
