@@ -59,12 +59,12 @@ receipt:
     plan: relative/path/to/plan.md
 ```
 
-## Decision or pattern
+## Decision or knowledge
 
 ```markdown
 ---
 title: Short, searchable lesson
-type: decision | pattern
+type: decision | knowledge
 description: One-sentence summary.
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -81,7 +81,7 @@ sources: [relative/path/to/receipt]
 
 What changed and why did it matter?
 
-## Decision or pattern
+## Decision or knowledge
 
 What should future work understand or reuse?
 

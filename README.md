@@ -57,7 +57,7 @@ The principal owns objectives and risk decisions. Agents can be technically capa
 UI-GATES does not treat every observation as permanent memory. Learning earns promotion:
 
 ```text
-Ephemeral → Task → Decision → Pattern → Canon
+Ephemeral → Task → Decision → Knowledge → Canon
 ```
 
 Each promoted artifact must link to its source, supporting evidence, and reuse guidance. See [the knowledge model](docs/knowledge-model.md).
@@ -68,7 +68,7 @@ Each promoted artifact must link to its source, supporting evidence, and reuse g
 docs/                 # Public system specification
 skills/uig/           # Portable short-form skill: `uig`
 skills/ui-gates/      # Formal UI-GATES skill
-plugins/uigates/      # Installable Codex plugin
+plugins/uigates/      # Installable Codex plugin (skills); core/ is a reference engine, not run by uig
 ```
 
 Project integrations should keep their own committed local context bundles and generated Graphify outputs. See [the integration model](docs/architecture.md).

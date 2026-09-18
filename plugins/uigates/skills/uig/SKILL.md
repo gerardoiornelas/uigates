@@ -11,7 +11,9 @@ Apply the UI-GATES workflow:
 2. Bound objective, constraints, success evidence, authority scope, and expiry.
 3. Propose consequential actions with their resource, reason, impact, risk, authority request, and verification plan.
 4. Execute only delegated work. Escalate gated or prohibited actions to the principal. After each step, record Expected/Actual/Delta; on a delta, replan its root cause before retrying.
-5. Verify with evidence, record a receipt, and promote only warranted learning with provenance.
+5. Verify with evidence, record a receipt, and promote only warranted learning with provenance: Ephemeral → Task → Decision → Knowledge → Canon.
+
+Stop and ask the principal when an action is gated or prohibited, material constraints are unknown, authoritative knowledge conflicts, or required verification fails or cannot run.
 
 Authority states are **observe**, **delegated**, **gated**, and **prohibited**. The governing rule is: reasoning proposes; authority decides; verified work synthesizes into reusable knowledge.
 

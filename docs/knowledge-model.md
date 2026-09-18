@@ -21,8 +21,8 @@ Knowledge is committed with the project it explains. A generated graph is a retr
 | Ephemeral | An observation helps only the active task. | Session-local; do not commit by default. |
 | Task | A fact is needed to resume or review a named task. | Keep with the task artifact. |
 | Decision | A tradeoff will affect future work. | Commit with alternatives and consequences. |
-| Pattern | A verified approach is reusable across tasks. | Commit with applicability and evidence. |
-| Canon | A stable principle governs multiple decisions or projects. | Promote only after repeated confirmed reuse or principal approval. |
+| Knowledge | A verified approach is reusable across tasks. | Commit with applicability, evidence, and limits. Reuse across two distinct tasks makes a candidate; a principal promotes it. |
+| Canon | A stable principle governs multiple decisions or projects. | Promote only through the normal gate, by principal approval: it alters how authority is evaluated. Repeated reuse alone never promotes. |
 
 ## Promotion standard
 
@@ -36,6 +36,7 @@ Every durable artifact must state:
 
 ## Trust rules
 
+- Promotion is never automatic and never self-awarded. A candidate must carry provenance, evidence, and stated conditions for reuse, and a principal promotes it.
 - Never promote an unsupported model inference as established knowledge.
 - Keep secrets, credentials, private user data, and production-sensitive receipts out of committed knowledge.
 - When current evidence conflicts with a prior decision, the Orchestrator must either resolve the conflict from authoritative context or request principal approval.

@@ -42,7 +42,7 @@ Build agents whose useful work compounds without granting them ambient authority
 ## Canonical cycle
 
 1. **Establish intent** — capture the outcome, constraints, proof requirements, authority domain, and expiry.
-2. **Discover** — retrieve repository context, prior decisions, relevant patterns, and evidence from OKF + Graph.
+2. **Discover** — retrieve repository context, prior decisions, relevant knowledge, and evidence from OKF + Graph.
 3. **Plan** — propose the smallest vertical slices and acceptance evidence.
 4. **Propose** — name the exact action, scope, risk, and authority requested.
 5. **Authorize** — UI-GATE allows, denies, or escalates the proposal.

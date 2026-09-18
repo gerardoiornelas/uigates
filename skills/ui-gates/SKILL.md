@@ -28,7 +28,7 @@ Reasoning proposes. Authority decides. Verified work synthesizes into reusable k
    - **Delta** — where actual diverges from expected, or "none."
 
    Do not claim success without evidence. If a delta exists, do not immediately retry — return to **Discover and plan** and revise the plan to account for the gap's root cause, then re-propose only if the revision changes the requested authority or scope.
-5. **Receipt and synthesis** — create or update the task receipt. If the loop needed more than one pass, note in the receipt what the final delta-free observation confirmed and what the earlier deltas revealed. Classify learning using the promotion ladder. Promote only decisions, patterns, and canon supported by evidence.
+5. **Receipt and synthesis** — create or update the task receipt. If the loop needed more than one pass, note in the receipt what the final delta-free observation confirmed and what the earlier deltas revealed. Classify learning using the promotion ladder (Ephemeral → Task → Decision → Knowledge → Canon). Promote only decisions, knowledge, and canon supported by evidence.
 
 ## Knowledge promotion
 
@@ -36,8 +36,9 @@ Read [knowledge artifact templates](references/knowledge-artifacts.md) when crea
 
 - Keep an implementation observation task-local unless it changes a future decision.
 - Promote a decision when future work must understand a tradeoff.
-- Promote a pattern only when it is verified and reusable.
-- Promote canon only after repeated confirmed reuse or explicit principal approval.
+- Promote knowledge only when it is verified and reusable.
+- Promote canon only with explicit principal approval through the gate. Repeated reuse alone never promotes.
+- Promotion is never automatic or self-awarded: reuse across distinct tasks makes a candidate, and a principal promotes it.
 
 ## Stop conditions
 
