@@ -1,0 +1,74 @@
+{
+  "body": {
+    "id": "workboard-v1-complete.markdown.treatment",
+    "taskId": "markdown",
+    "mode": "evaluation",
+    "arm": "treatment",
+    "project": "workboard",
+    "family": "reporting",
+    "planSha256": "1fe9373d19c209a5d8117cf0e5f4beea906efc64877ceb5562374112e89faa9a",
+    "protocolSha256": "17d636117dd3a71fcfc1471c9121a962a468e1ab86b98f2de6f48f1a1603c238",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "high",
+    "sourceHashes": {
+      "cli.mjs": "04394005bd669df5fd76c871b2f76898b40f3fb43959c8b191f20371daea0c17",
+      "domain/board.mjs": "60a55d4a30ed5927e96e4408ec6fcb8c836bc513961d6c107fe463dc962b72a3",
+      "domain/records.mjs": "5a54dd3b7cc8ea8e1d636b481d7d1f2549fba84d9b4dc1dd1d57a9cb607bbf77",
+      "features/.gitkeep": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "features/add.mjs": "52c5870d78c2278c088e5c3e3f22f3679662ee1da69c9c6b980a4f41397b68d8",
+      "features/complete.mjs": "21f3b36e126d59cc92f280f9146521332f5c840394277e1ec9dbd8379d157ac6",
+      "README.md": "83c53c3b9cae2095f18045448bcf3f592d28f91a4416bb00d1c522e72d45cab4",
+      "storage/file.mjs": "0ad878b223e66fec1a3c0b0929c46c6bd370a0b63f73647a9dbb81a2dea9cbdf",
+      "test/contracts.test.mjs": "e9a598d97bd9461d0e20da11a801d8efcbbea2a5aaf0178905d854cf30fd427c"
+    },
+    "finalHashes": {
+      "cli.mjs": "04394005bd669df5fd76c871b2f76898b40f3fb43959c8b191f20371daea0c17",
+      "domain/board.mjs": "60a55d4a30ed5927e96e4408ec6fcb8c836bc513961d6c107fe463dc962b72a3",
+      "domain/records.mjs": "5a54dd3b7cc8ea8e1d636b481d7d1f2549fba84d9b4dc1dd1d57a9cb607bbf77",
+      "features/.gitkeep": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "features/add.mjs": "52c5870d78c2278c088e5c3e3f22f3679662ee1da69c9c6b980a4f41397b68d8",
+      "features/complete.mjs": "21f3b36e126d59cc92f280f9146521332f5c840394277e1ec9dbd8379d157ac6",
+      "README.md": "83c53c3b9cae2095f18045448bcf3f592d28f91a4416bb00d1c522e72d45cab4",
+      "storage/file.mjs": "0ad878b223e66fec1a3c0b0929c46c6bd370a0b63f73647a9dbb81a2dea9cbdf",
+      "test/contracts.test.mjs": "e9a598d97bd9461d0e20da11a801d8efcbbea2a5aaf0178905d854cf30fd427c"
+    },
+    "sourceUnchanged": true,
+    "unexpectedChanges": [],
+    "changed": [],
+    "artifacts": {},
+    "suppliedLessons": [
+      "lesson-1079c5e5daca0992da2b"
+    ],
+    "prompt": "930f6d2647c44ad6083ddd826ac42fc49aa5a15da73051429b3a33c7841cb8f0",
+    "trace": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr": "5eb02791f57d7bcd1147d780a9e36fb76fcdbdfa8387362bcb8015ceeb281f8c",
+    "usage": {
+      "complete": false,
+      "input": null,
+      "output": null,
+      "cached": null,
+      "total": null,
+      "reason": "Missing, failed or unfinished turn"
+    },
+    "processExitCode": 1,
+    "timedOut": false,
+    "processError": null,
+    "checks": [
+      {
+        "name": "markdown",
+        "file": "/Users/jenniferornelas/Documents/Git/violetek/uigates/evaluations/real-project-v1/verify.mjs",
+        "beforeHash": "246fc7d5867ad39792cb75e4616993988d3836055ba3cd62f06a2fa00a8604d2",
+        "afterHash": "246fc7d5867ad39792cb75e4616993988d3836055ba3cd62f06a2fa00a8604d2",
+        "exitCode": 1,
+        "timedOut": false,
+        "log": "c3f9d35ba75ccac5d012d2fff709c5f02c45c7db5d573dfd86577ec6a5711375"
+      }
+    ],
+    "accepted": false,
+    "startedAt": "2026-09-19T00:42:11.540Z",
+    "finishedAt": "2026-09-19T00:42:11.622Z",
+    "workspaceIsolation": "separate ephemeral workspaces; guidance withheld from control; trusted workers, not a hostile-process security boundary",
+    "runner": "codex-exec-json-v1"
+  },
+  "sha256": "09f34da9bd7b6921c27e398458163aece680ccca2d7eccbb7723dba1ba6263b2"
+}

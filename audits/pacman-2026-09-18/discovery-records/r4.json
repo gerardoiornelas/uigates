@@ -1,0 +1,83 @@
+{
+  "intent": {
+    "id": "1-0-discovery",
+    "principalId": "audit-fixture",
+    "goal": "Verify Pac-Man semantics",
+    "constraints": [
+      "Only local fixture executions"
+    ],
+    "successEvidence": [
+      "behavior results"
+    ],
+    "authorityDomain": [
+      "examples/pacman-audit/"
+    ],
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "createdAt": "2026-09-18T23:33:53.466Z"
+  },
+  "proposal": {
+    "id": "p4",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "action": "pacman:collision:b",
+    "resource": "examples/pacman-audit/engine.mjs",
+    "rationale": "Verify collision",
+    "impact": "low",
+    "risk": "Disposable simulation only",
+    "authorityRequested": "delegated",
+    "verificationPlan": "Execute collision behavior checks",
+    "proposedAt": "2026-09-18T23:33:53.474Z",
+    "taskId": "collision"
+  },
+  "authorization": {
+    "id": "auth_817df422-1da0-4b7b-909c-846323f5d19d",
+    "proposalId": "p4",
+    "authorizedBy": "audit-fixture",
+    "state": "delegated",
+    "authorizedAt": "2026-09-18T23:33:53.474Z",
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "actorId": "fixture-worker",
+    "intentId": "1-0-discovery",
+    "action": "pacman:collision:b",
+    "resource": "examples/pacman-audit/engine.mjs"
+  },
+  "receipt": {
+    "id": "r4",
+    "authorizationId": "auth_817df422-1da0-4b7b-909c-846323f5d19d",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "actionPerformed": "pacman:collision:b",
+    "expectedOutcome": "Execute collision behavior checks",
+    "actualOutcome": "Failed behavioral verification",
+    "delta": "crossing player and ghost costs a life; same destination costs a life; power pellet protects at contact",
+    "evidence": [
+      "attempts.json#3 sha256:b86a51767448c76f6f61f62350614f4426f24688c1e75d99169115581a40c3ba"
+    ],
+    "verifiedAt": "2026-09-18T23:33:53.474Z",
+    "taskId": "collision"
+  },
+  "evidence": {
+    "seed": 1,
+    "variant": 0,
+    "arm": "discovery",
+    "family": "collision",
+    "candidate": "b",
+    "checks": [
+      {
+        "name": "crossing player and ghost costs a life",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n3 !== 2\n"
+      },
+      {
+        "name": "same destination costs a life",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n3 !== 2\n"
+      },
+      {
+        "name": "power pellet protects at contact",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n50 !== 250\n"
+      }
+    ]
+  }
+}

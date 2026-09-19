@@ -1,0 +1,9 @@
+{
+  "body": {
+    "planId": "workboard-v1-complete",
+    "phase": "selection",
+    "kind": "deterministic",
+    "reason": "This phase uses local JavaScript, hashes and executable assertions only; no additional model call in the observed evaluation cycle."
+  },
+  "sha256": "c1435a601383c289775e1b5a47ce9753101b601aade470b10263b1ec973c9e95"
+}

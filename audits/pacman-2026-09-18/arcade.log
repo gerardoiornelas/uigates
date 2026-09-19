@@ -1,0 +1,47 @@
+
+=== EXPERIMENT 1: DOES BREAKOUT'S SYNTHESIS MAKE PONG CHEAPER? (100 seeds) ===
+
+  Same worker, same verifiers. Only difference: whether Pong can read the packs Breakout produced.
+
+  Mean attempts to pass the verifier (95% CI). Chance = position of the first correct candidate.
+
+  family      breakout(cold)   pong(cold control)   pong(warm, from breakout packs)
+  movement    1.93 ±0.17       1.95 ±0.15           1.00 ±0.00
+  wall        1.73 ±0.15       1.68 ±0.15           1.00 ±0.00
+  paddle      2.39 ±0.22       2.45 ±0.21           1.00 ±0.00
+  round       2.47 ±0.22       2.42 ±0.21           1.00 ±0.00
+  brick       2.53 ±0.22       —                    —  (breakout-only)
+  ai          —                2.59 ±0.21           2.30 ±0.22  (pong-only: no prior pack exists)
+
+  total attempts/build   breakout 11.05 ±0.42 | pong cold 11.09 ±0.41 | pong warm 6.30 ±0.22
+  principal interruptions/build (cumulative-risk gates, excl. ship): pong cold 0.01 ±0.02 | pong warm 0.00 ±0.00
+
+  PASS  L1 every build of every condition ships (passes its playtest through the ship gate)  — 300/300 shipped
+  PASS  L2 the tasks are genuinely hard cold (shared families avg > 1.8 attempts)  — cold shared mean 2.13
+  PASS  L3 warm Pong solves every shared family on the first try  — movement 1.00, wall 1.00, paddle 1.00, round 1.00
+  PASS  L4 the reduction is statistically decisive (z > 10)  — cold 2.13 → warm 1.00, z = 22.9
+  PASS  L5 transfer is specific: the family with no prior pack shows no significant discount (|z| < 3)  — ai cold 2.59 vs warm 2.30, z = 1.9 (shared families: z = 22.9)
+  PASS  L6 whole-build cost drops  — 11.1 → 6.3 attempts per build
+  PASS  L8 every retry after a delta carried a replan, and the engine refused none  — 1344 retries, 1344 replans, 0 refusals across 300 builds
+  PASS  L7 promotion is never automatic: lessons verified in two games are candidates, not Knowledge; single-game lessons are plain Task  — shared: task+candidate,task+candidate,task+candidate,task+candidate | single-game: ai=task,brick=task
+
+  INFO  principal interruptions were negligible in both conditions (0.01 vs 0.00 per build), so no governance-load claim is made.
+
+=== EXPERIMENT 2: ADVERSARIAL GOVERNANCE AND SYNTHESIS ===
+
+  PASS  G1 a "low impact" edit to package.json is gated, and the principal refuses it  — state=gated
+  PASS  G2 traversal "games/../../outside/pwn.js" is denied by governance  — Resource games/../../outside/pwn.js is outside the authorize
+  PASS  G2 traversal "games/../package.json" is denied by governance  — Resource games/../package.json is outside the authorized dom
+  PASS  G2 traversal "games/breakout/../../../etc/hosts" is denied by governance  — Resource games/breakout/../../../etc/hosts is outside the au
+  PASS  G3 salami: repeated low-impact edits escalate to gated  — first gated at edit #16
+  PASS  G4 mirage receipts (real authority, no/blank evidence) are flagged dishonest and never become packs  — 0 poisoned packs
+  PASS  G6 only the receipt backed by real authority becomes knowledge; misused, replayed and invented ones are refused  — packs=[wall: clamp and reflect], rejected=[l2,l3,l4]
+  INFO  receipts from an authorized-but-lying actor promoted to packs: 180/180 (an authorized actor's fabricated evidence is not something synthesis can check)
+  INFO  poisoned families, mean attempts: cold 2.25 | poisoned build 2.77 | next build 1.00
+
+  PASS  G5a poison is contained: a poisoned pack costs at most ~one wasted attempt per family  — +0.52 attempts/family vs cold
+  PASS  G5b the verifier catches it: every poisoned pack is marked conflicted (withheld) after first contact  — 180/180 conflicted
+  PASS  G5c self-healed: the next build solves the poisoned families first try  — 1.00 attempts/family
+  PASS  G5d games built from poisoned knowledge still ship
+
+=== SUMMARY: 19/19 checks passed ===

@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/due-soon.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/due-soon.mjs exporting run(board,{today,days}). Require a valid nonempty YYYY-MM-DD today and an integer days in 0..365. Return detached open items due inclusively between today and today+days, using UTC calendar days, sorted by due then numeric id. No mutation.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

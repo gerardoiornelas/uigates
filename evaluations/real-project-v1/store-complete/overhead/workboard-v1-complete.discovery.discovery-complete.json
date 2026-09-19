@@ -1,0 +1,12 @@
+{
+  "body": {
+    "planId": "workboard-v1-complete",
+    "phase": "discovery",
+    "kind": "model",
+    "runId": "discovery-complete",
+    "trace": "b2fb500d95206bfafe0d8b74d7df4fbf02eab928575866c582fe3ec2511e5238",
+    "processExitCode": 0,
+    "timedOut": false
+  },
+  "sha256": "e362a31bac2d7246f8384157e0b83d28c8f0d88558b4a62e952e132410a657f0"
+}

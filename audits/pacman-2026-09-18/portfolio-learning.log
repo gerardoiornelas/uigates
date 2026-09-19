@@ -1,0 +1,328 @@
+TAP version 13
+# Subtest: automatic receipt hook records failures and fixes, redacts content, and requires repeated distinct tasks
+ok 1 - automatic receipt hook records failures and fixes, redacts content, and requires repeated distinct tasks
+  ---
+  duration_ms: 215.739292
+  type: 'test'
+  ...
+# Subtest: same task repeated cannot masquerade as independent experience; authority corrections are excluded
+ok 2 - same task repeated cannot masquerade as independent experience; authority corrections are excluded
+  ---
+  duration_ms: 35.894
+  type: 'test'
+  ...
+# Subtest: six unseen matched fixtures demonstrate transfer, then require explicit approval before live reuse
+ok 3 - six unseen matched fixtures demonstrate transfer, then require explicit approval before live reuse
+  ---
+  duration_ms: 146.614042
+  type: 'test'
+  ...
+# Subtest: source changes invalidate lesson reuse and active evaluations
+ok 4 - source changes invalidate lesson reuse and active evaluations
+  ---
+  duration_ms: 138.133458
+  type: 'test'
+  ...
+# Subtest: evaluation counts all arms and overhead before supporting token savings
+ok 5 - evaluation counts all arms and overhead before supporting token savings
+  ---
+  duration_ms: 155.290583
+  type: 'test'
+  ...
+# Subtest: unknown overhead and pending outcomes prevent savings and promotion; regression suspends lessons
+ok 6 - unknown overhead and pending outcomes prevent savings and promotion; regression suspends lessons
+  ---
+  duration_ms: 137.778833
+  type: 'test'
+  ...
+# Subtest: refuses missing arms, duplicates, weakened checks, changed model, invented reuse, and skipped human review
+ok 7 - refuses missing arms, duplicates, weakened checks, changed model, invented reuse, and skipped human review
+  ---
+  duration_ms: 99.414416
+  type: 'test'
+  ...
+# Subtest: telemetry never double-counts cache, rejects duplicate imports and cannot turn incomplete logs into zeros
+ok 8 - telemetry never double-counts cache, rejects duplicate imports and cannot turn incomplete logs into zeros
+  ---
+  duration_ms: 127.118375
+  type: 'test'
+  ...
+# Subtest: receipt hook refuses finished run before writing another receipt
+ok 9 - receipt hook refuses finished run before writing another receipt
+  ---
+  duration_ms: 74.781875
+  type: 'test'
+  ...
+# Subtest: CLI describes local operation and rejects malformed commands without mutation
+ok 10 - CLI describes local operation and rejects malformed commands without mutation
+  ---
+  duration_ms: 152.693667
+  type: 'test'
+  ...
+# Subtest: pending final telemetry turn and measured overhead prevent false efficiency claims
+ok 11 - pending final telemetry turn and measured overhead prevent false efficiency claims
+  ---
+  duration_ms: 150.438167
+  type: 'test'
+  ...
+# Subtest: expired and revoked authority prevents live guidance use
+ok 12 - expired and revoked authority prevents live guidance use
+  ---
+  duration_ms: 156.331625
+  type: 'test'
+  ...
+# Subtest: does not learn to waive pending human review as a schema shortcut
+ok 13 - does not learn to waive pending human review as a schema shortcut
+  ---
+  duration_ms: 34.694416
+  type: 'test'
+  ...
+# Subtest: reuse statistics distinguish supplied, applied, accepted and missing usage
+ok 14 - reuse statistics distinguish supplied, applied, accepted and missing usage
+  ---
+  duration_ms: 132.833833
+  type: 'test'
+  ...
+# Subtest: an unused co-selected lesson does not inherit another lesson's evaluation
+ok 15 - an unused co-selected lesson does not inherit another lesson's evaluation
+  ---
+  duration_ms: 139.244625
+  type: 'test'
+  ...
+# Subtest: complete measured evaluation supports the primary claim only without rework regression
+ok 16 - complete measured evaluation supports the primary claim only without rework regression
+  ---
+  duration_ms: 135.795041
+  type: 'test'
+  ...
+# Subtest: a recorded wall-clock limitation keeps completed arms descriptive but makes the primary inconclusive
+ok 17 - a recorded wall-clock limitation keeps completed arms descriptive but makes the primary inconclusive
+  ---
+  duration_ms: 132.975208
+  type: 'test'
+  ...
+# Subtest: rework regression on one accepted arm blocks the primary claim and suspends the lesson
+ok 18 - rework regression on one accepted arm blocks the primary claim and suspends the lesson
+  ---
+  duration_ms: 142.943334
+  type: 'test'
+  ...
+# Subtest: finish validates and stores a descriptive limitation
+ok 19 - finish validates and stores a descriptive limitation
+  ---
+  duration_ms: 31.738208
+  type: 'test'
+  ...
+# Subtest: recoverability attestation is validated at plan freeze and only caps the claim altitude
+ok 20 - recoverability attestation is validated at plan freeze and only caps the claim altitude
+  ---
+  duration_ms: 185.323375
+  type: 'test'
+  ...
+# Subtest: an all-unclear recoverability payload caps any claim at unverified-novelty
+ok 21 - an all-unclear recoverability payload caps any claim at unverified-novelty
+  ---
+  duration_ms: 135.337875
+  type: 'test'
+  ...
+# Subtest: aggregate summary reports an empty store as zero, never as fabricated telemetry
+ok 22 - aggregate summary reports an empty store as zero, never as fabricated telemetry
+  ---
+  duration_ms: 30.414791
+  type: 'test'
+  ...
+# Subtest: aggregate summary counts lifecycle and only measures actual telemetry
+ok 23 - aggregate summary counts lifecycle and only measures actual telemetry
+  ---
+  duration_ms: 136.738125
+  type: 'test'
+  ...
+# Subtest: aggregate summary records unknown telemetry as unknown, never zero
+ok 24 - aggregate summary records unknown telemetry as unknown, never zero
+  ---
+  duration_ms: 127.495625
+  type: 'test'
+  ...
+# Subtest: aggregate summary counts a recorded limitation and descriptive failures
+ok 25 - aggregate summary counts a recorded limitation and descriptive failures
+  ---
+  duration_ms: 128.587292
+  type: 'test'
+  ...
+# Subtest: CLI stats renders a human-readable report honoring unknown telemetry
+ok 26 - CLI stats renders a human-readable report honoring unknown telemetry
+  ---
+  duration_ms: 141.775167
+  type: 'test'
+  ...
+# Subtest: control: a lesson that really was evaluated and approved is trusted
+ok 27 - control: a lesson that really was evaluated and approved is trusted
+  ---
+  duration_ms: 128.712667
+  type: 'test'
+  ...
+# Subtest: a hand-written approval cannot promote a lesson that was never evaluated
+ok 28 - a hand-written approval cannot promote a lesson that was never evaluated
+  ---
+  duration_ms: 94.320708
+  type: 'test'
+  ...
+# Subtest: a forged evaluation cannot vouch for a lesson: it must name a real plan and report
+ok 29 - a forged evaluation cannot vouch for a lesson: it must name a real plan and report
+  ---
+  duration_ms: 107.272125
+  type: 'test'
+  ...
+# Subtest: a frozen plan that was never evaluated is not an evaluation
+ok 30 - a frozen plan that was never evaluated is not an evaluation
+  ---
+  duration_ms: 102.206291
+  type: 'test'
+  ...
+# Subtest: an approval recorded for different lesson content is refused
+ok 31 - an approval recorded for different lesson content is refused
+  ---
+  duration_ms: 129.920375
+  type: 'test'
+  ...
+# Subtest: an approval without a principal, source, scope or expiry is refused
+ok 32 - an approval without a principal, source, scope or expiry is refused
+  ---
+  duration_ms: 132.629834
+  type: 'test'
+  ...
+# Subtest: retirement is terminal: a later forged approval cannot revive a lesson
+ok 33 - retirement is terminal: a later forged approval cannot revive a lesson
+  ---
+  duration_ms: 126.745917
+  type: 'test'
+  ...
+# Subtest: a retirement without a reason is not accepted as history
+ok 34 - a retirement without a reason is not accepted as history
+  ---
+  duration_ms: 93.237292
+  type: 'test'
+  ...
+# Subtest: a lesson with invalid history can be neither planned nor supplied, and is counted
+ok 35 - a lesson with invalid history can be neither planned nor supplied, and is counted
+  ---
+  duration_ms: 96.973042
+  type: 'test'
+  ...
+# Subtest: a real evaluation of one lesson cannot be borrowed to vouch for a co-selected lesson that earned nothing
+ok 36 - a real evaluation of one lesson cannot be borrowed to vouch for a co-selected lesson that earned nothing
+  ---
+  duration_ms: 135.422083
+  type: 'test'
+  ...
+# Subtest: an evaluation report altered after the fact no longer vouches for its lesson
+ok 37 - an evaluation report altered after the fact no longer vouches for its lesson
+  ---
+  duration_ms: 130.408959
+  type: 'test'
+  ...
+# Subtest: a plan changed after evaluation no longer vouches for its lesson
+ok 38 - a plan changed after evaluation no longer vouches for its lesson
+  ---
+  duration_ms: 159.6645
+  type: 'test'
+  ...
+# Subtest: history cannot regress: an evaluation recorded after approval is refused
+ok 39 - history cannot regress: an evaluation recorded after approval is refused
+  ---
+  duration_ms: 131.930708
+  type: 'test'
+  ...
+# Subtest: sentence boundaries and field tokens tokenize deterministically
+ok 40 - sentence boundaries and field tokens tokenize deterministically
+  ---
+  duration_ms: 2.672959
+  type: 'test'
+  ...
+# Subtest: recoverability grades explicit, partial and unclear corrections with excerpts
+ok 41 - recoverability grades explicit, partial and unclear corrections with excerpts
+  ---
+  duration_ms: 3.826583
+  type: 'test'
+  ...
+# Subtest: partial grade reports field and value without the diagnostic trigger
+ok 42 - partial grade reports field and value without the diagnostic trigger
+  ---
+  duration_ms: 1.366833
+  type: 'test'
+  ...
+# Subtest: payload files that never mention a correction yield unclear grades and cap nothing
+ok 43 - payload files that never mention a correction yield unclear grades and cap nothing
+  ---
+  duration_ms: 0.805625
+  type: 'test'
+  ...
+# Subtest: missing payload files are recorded rather than treated as explanatory
+ok 44 - missing payload files are recorded rather than treated as explanatory
+  ---
+  duration_ms: 0.663458
+  type: 'test'
+  ...
+# Subtest: payload sha256 pins the manifest so later content changes are detectable
+ok 45 - payload sha256 pins the manifest so later content changes are detectable
+  ---
+  duration_ms: 1.353
+  type: 'test'
+  ...
+# Subtest: trigger words must land in the same sentence as field and value
+ok 46 - trigger words must land in the same sentence as field and value
+  ---
+  duration_ms: 0.841084
+  type: 'test'
+  ...
+# Subtest: a numeric or boolean required value still grades through its tokens
+ok 47 - a numeric or boolean required value still grades through its tokens
+  ---
+  duration_ms: 0.847166
+  type: 'test'
+  ...
+# Subtest: no corrections is reported as such and keeps the claim altitude unverified
+ok 48 - no corrections is reported as such and keeps the claim altitude unverified
+  ---
+  duration_ms: 0.997083
+  type: 'test'
+  ...
+# Subtest: empty store reports zeros and no receipts
+ok 49 - empty store reports zeros and no receipts
+  ---
+  duration_ms: 2.751541
+  type: 'test'
+  ...
+# Subtest: records run start and completion events with receipts and gated actions
+ok 50 - records run start and completion events with receipts and gated actions
+  ---
+  duration_ms: 2.477292
+  type: 'test'
+  ...
+# Subtest: completions in other repos are not counted as in-this-repo
+ok 51 - completions in other repos are not counted as in-this-repo
+  ---
+  duration_ms: 1.240166
+  type: 'test'
+  ...
+# Subtest: malformed lines are skipped and counted, never fatal
+ok 52 - malformed lines are skipped and counted, never fatal
+  ---
+  duration_ms: 1.794417
+  type: 'test'
+  ...
+# Subtest: hook session-usage: counts uig sessions and measures only real token totals
+ok 53 - hook session-usage: counts uig sessions and measures only real token totals
+  ---
+  duration_ms: 1.531791
+  type: 'test'
+  ...
+1..53
+# tests 53
+# suites 0
+# pass 53
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4922.080166

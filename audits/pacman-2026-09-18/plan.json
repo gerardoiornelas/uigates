@@ -1,0 +1,22 @@
+{
+  "intent": "Audit advertised UI-GATES synthesis and recreate a playable Pac-Man-style game with reproducible behavioral evidence.",
+  "authorization": "User's current request: local analysis, game recreation and tests. No deployment, promotion to Canon, or publishing.",
+  "baseline": "Preserve existing dirty checkout and examples/pacman; add isolated audit artifacts and a separate game.",
+  "hypotheses": [
+    "The existing game meets basic maze-game behavioral requirements.",
+    "Synthesis persists receipt-derived guidance and a fresh consumer can reuse it.",
+    "Removing memory removes the measured benefit in a deterministic candidate-selection experiment.",
+    "Old or unsupported evidence cannot cause an unsafe recommendation."
+  ],
+  "experiment": {
+    "worker": "deterministic candidate selector, not a coding LLM",
+    "seeds": 60,
+    "heldout_cases": 6,
+    "families": ["tunnel", "collision", "terminal"],
+    "arms": ["control", "memory", "memory-ablated"],
+    "training": "one discovery game per seed; three candidate implementations per family; real engine behavior decides acceptance",
+    "freeze": "No holdout receipts are synthesized. Each arm starts with a new store and the same candidate order. Memory arm receives only discovery packs.",
+    "metrics": ["actual candidate executions", "failed candidate executions", "final acceptance", "retrieved pack IDs"],
+    "limits": "Shared algorithms across heldout states; tests and worker authored in this session; no blind independent reviewer, coding-agent efficiency, token savings or model-weight learning claim."
+  }
+}

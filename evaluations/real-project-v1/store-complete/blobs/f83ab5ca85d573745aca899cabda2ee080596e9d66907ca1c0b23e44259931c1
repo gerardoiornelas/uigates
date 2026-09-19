@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/batch-complete.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/batch-complete.mjs exporting run(board,{ids}). Require an array of valid IDs. Deduplicate IDs, process in first-occurrence order, and return detached records in that order. Open items become done with revision +1; done items are unchanged. Empty array is a no-op. Any missing, invalid or archived ID rolls back the ENTIRE batch. One audit event for a changing batch. Follow transaction/audit conventions.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

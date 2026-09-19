@@ -1,0 +1,78 @@
+[
+  {
+    "name": "left tunnel wraps to opposite edge",
+    "pass": true
+  },
+  {
+    "name": "right tunnel wraps to opposite edge",
+    "pass": true
+  },
+  {
+    "name": "closed endpoint cannot wrap",
+    "pass": true
+  },
+  {
+    "name": "crossing player and ghost costs a life",
+    "pass": true
+  },
+  {
+    "name": "same destination costs a life",
+    "pass": true
+  },
+  {
+    "name": "power pellet protects at contact",
+    "pass": true
+  },
+  {
+    "name": "last dot plus lethal contact is a loss",
+    "pass": true
+  },
+  {
+    "name": "last safe dot wins",
+    "pass": true
+  },
+  {
+    "name": "finished game cannot keep scoring",
+    "pass": true
+  },
+  {
+    "name": "every pellet is reachable from spawn",
+    "pass": true
+  },
+  {
+    "name": "wall blocks movement",
+    "pass": true
+  },
+  {
+    "name": "pellet scored once",
+    "pass": true
+  },
+  {
+    "name": "queued turn waits for intersection",
+    "pass": true
+  },
+  {
+    "name": "pause freezes simulation",
+    "pass": true
+  },
+  {
+    "name": "restart factory resets score, lives, dots",
+    "pass": true
+  },
+  {
+    "name": "power expires after bounded ticks",
+    "pass": true
+  },
+  {
+    "name": "seeded ghost movement is reproducible",
+    "pass": true
+  },
+  {
+    "name": "10000 seeded ticks preserve traversable positions and dot count",
+    "pass": true
+  },
+  {
+    "name": "full default maze can be cleared by legal movement",
+    "pass": true
+  }
+]

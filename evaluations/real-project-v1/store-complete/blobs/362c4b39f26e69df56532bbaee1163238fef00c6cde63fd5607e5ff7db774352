@@ -1,0 +1,8 @@
+PASS query does not mutate
+PASS date range and states
+PASS strict date
+PASS detached
+PASS invalid days
+PASS inclusive same day
+PASS year rollover
+7 independent behavioral checks passed for due-soon

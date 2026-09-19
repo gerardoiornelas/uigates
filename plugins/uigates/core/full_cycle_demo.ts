@@ -1,43 +1,36 @@
-import { StateStore } from './core/StateStore';
-import { GovernanceEngine } from './core/GovernanceEngine';
-import { ReceiptStore } from './core/ReceiptStore';
-import { LoopDriver } from './intelligence/loop/driver';
-import { CESynthesizer } from './intelligence/ce/synthesizer';
-import { Intent } from './core/types/primitives';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as crypto from 'node:crypto';
+import { StateStore } from './StateStore';
+import { GovernanceEngine } from './GovernanceEngine';
+import { ReceiptStore } from './ReceiptStore';
+import { LoopDriver } from '../intelligence/loop/driver';
+import { CESynthesizer, loadKnowledge } from '../intelligence/ce/synthesizer';
+import { IntelligenceEngine } from './UIGatesWrapper';
+import { Intent, Proposal } from './types/primitives';
 
+/** A real filesystem smoke test, not a coding-agent learning benchmark. */
 async function runFullCycle() {
-  console.log('=== UI-GATES: FULL AGENTIC CYCLE DEMO ===\n');
-
-  const store = new StateStore();
-  const govEngine = new GovernanceEngine();
-  const receiptStore = new ReceiptStore();
-
-  // 1. Establish Intent
-  const myIntent: Intent = {
-    id: 'intent-full-cycle',
-    principalId: 'principal-bob',
-    goal: 'Implement secure session handling',
-    constraints: ['No plain-text cookies', 'Refresh tokens required'],
-    successEvidence: ['Passes OWASP scan', 'Unit tests pass'],
-    authorityDomain: ['src/'],
-    expiry: new Date(Date.now() + 86400000),
-    createdAt: new Date(),
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-cycle-'));
+  const state = new StateStore(root), receipts = new ReceiptStore();
+  const gov = new GovernanceEngine([], undefined, receipts);
+  const intent: Intent = { id:'demo',principalId:'demo-principal',goal:'Write and verify a local note',constraints:['temporary directory only'],successEvidence:['read-back comparison'],authorityDomain:['notes.txt'],expiry:new Date(Date.now()+60000),createdAt:new Date() };
+  state.saveIntent(intent);
+  const proposal: Proposal = {id:'demo-proposal',intentId:'demo',actorId:'demo-worker',action:'Write and verify a local note',resource:'notes.txt',rationale:'Demonstrate actual verified I/O',impact:'low',risk:'temporary local file',authorityRequested:'delegated',verificationPlan:'Read back notes.txt and compare exact content',proposedAt:new Date()};
+  const worker: IntelligenceEngine = {
+    async proposeAction() { return proposal; },
+    async executeAction() {
+      const expected='UI-GATES real execution\n';fs.writeFileSync(path.join(root,'notes.txt'),expected);
+      const ok=fs.readFileSync(path.join(root,'notes.txt'),'utf8')===expected;
+      const proof=JSON.stringify({check:'read-back',passed:ok});fs.writeFileSync(path.join(root,'proof.json'),proof);
+      return {success:ok,actualOutcome:ok?'Verified success GOAL_REACHED':'Failed read-back',delta:ok?'None':'Content mismatch',evidence:['sha256:'+crypto.createHash('sha256').update(proof).digest('hex')+':proof.json']};
+    },
+    async learnFromReceipt(r) { state.saveReceipt(r); },
   };
-  store.saveIntent(myIntent);
-  console.log(`[1] Intent established: ${myIntent.goal}`);
-
-  // 2. Run the Intelligence Loop (AIDD + Ralph Loop)
-  const driver = new LoopDriver(store, govEngine, receiptStore);
-  await driver.run(myIntent.id);
-  console.log(`\n[2] Intelligence loop completed.`);
-
-  // 3. Synthesize Knowledge (Compound Engineering)
-  const synthesizer = new CESynthesizer(receiptStore);
-  await synthesizer.synthesize(myIntent.id);
-  console.log(`\n[3] Knowledge synthesized into Compound Packs.`);
-
-  console.log('\n=== CYCLE COMPLETE ===');
-  console.log('Check .uig/ for the full audit trail and knowledge base.');
+  await new LoopDriver(state,gov,receipts,worker).run(intent.id);
+  await new CESynthesizer(receipts,root,gov.ledger).synthesize(intent.id);
+  if(loadKnowledge(root).length!==1)throw Error('Verified receipt did not synthesize');
+  console.log('Real I/O, verification, receipt and synthesis completed. Evidence: '+root);
 }
-
-runFullCycle().catch(console.error);
+runFullCycle().catch(error=>{console.error(error);process.exitCode=1;});

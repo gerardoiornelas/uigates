@@ -1,0 +1,7 @@
+PASS transition, revision and audit
+PASS idempotent
+PASS invalid transition rollback
+PASS invalid transition rollback
+PASS invalid transition rollback
+PASS invalid transition rollback
+6 independent behavioral checks passed for complete

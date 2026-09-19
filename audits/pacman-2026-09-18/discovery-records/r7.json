@@ -1,0 +1,81 @@
+{
+  "intent": {
+    "id": "1-0-discovery",
+    "principalId": "audit-fixture",
+    "goal": "Verify Pac-Man semantics",
+    "constraints": [
+      "Only local fixture executions"
+    ],
+    "successEvidence": [
+      "behavior results"
+    ],
+    "authorityDomain": [
+      "examples/pacman-audit/"
+    ],
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "createdAt": "2026-09-18T23:33:53.466Z"
+  },
+  "proposal": {
+    "id": "p7",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "action": "pacman:terminal:b",
+    "resource": "examples/pacman-audit/engine.mjs",
+    "rationale": "Verify terminal",
+    "impact": "low",
+    "risk": "Disposable simulation only",
+    "authorityRequested": "delegated",
+    "verificationPlan": "Execute terminal behavior checks",
+    "proposedAt": "2026-09-18T23:33:53.475Z",
+    "taskId": "terminal"
+  },
+  "authorization": {
+    "id": "auth_d6f5822a-bf4d-42ef-9259-c3aed3239787",
+    "proposalId": "p7",
+    "authorizedBy": "audit-fixture",
+    "state": "delegated",
+    "authorizedAt": "2026-09-18T23:33:53.475Z",
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "actorId": "fixture-worker",
+    "intentId": "1-0-discovery",
+    "action": "pacman:terminal:b",
+    "resource": "examples/pacman-audit/engine.mjs"
+  },
+  "receipt": {
+    "id": "r7",
+    "authorizationId": "auth_d6f5822a-bf4d-42ef-9259-c3aed3239787",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "actionPerformed": "pacman:terminal:b",
+    "expectedOutcome": "Execute terminal behavior checks",
+    "actualOutcome": "Failed behavioral verification",
+    "delta": "last dot plus lethal contact is a loss",
+    "evidence": [
+      "attempts.json#6 sha256:8144b8ccae7225d44e520526f63f56a69a6e56dea512ee55a9639aba80a96178"
+    ],
+    "verifiedAt": "2026-09-18T23:33:53.476Z",
+    "taskId": "terminal"
+  },
+  "evidence": {
+    "seed": 1,
+    "variant": 0,
+    "arm": "discovery",
+    "family": "terminal",
+    "candidate": "b",
+    "checks": [
+      {
+        "name": "last dot plus lethal contact is a loss",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n'won' !== 'lost'\n"
+      },
+      {
+        "name": "last safe dot wins",
+        "pass": true
+      },
+      {
+        "name": "finished game cannot keep scoring",
+        "pass": true
+      }
+    ]
+  }
+}

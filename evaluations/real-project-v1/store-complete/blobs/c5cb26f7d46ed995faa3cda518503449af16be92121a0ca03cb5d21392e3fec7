@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/complete.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/complete.mjs exporting run(board,{id}). Complete an open item and increase its revision exactly once. Return the item. Completing a done item is an idempotent no-op; archived items and missing or invalid IDs must throw without any board change. Follow the project transaction and audit conventions.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

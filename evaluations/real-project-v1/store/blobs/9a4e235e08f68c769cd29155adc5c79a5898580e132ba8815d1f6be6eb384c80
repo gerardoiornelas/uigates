@@ -1,0 +1,7 @@
+PASS new record and next id
+PASS invalid add rollback
+PASS invalid add rollback
+PASS invalid add rollback
+PASS invalid add rollback
+PASS invalid add rollback
+6 independent behavioral checks passed for add

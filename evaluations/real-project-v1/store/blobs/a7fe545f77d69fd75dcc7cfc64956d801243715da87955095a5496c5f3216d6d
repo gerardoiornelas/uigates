@@ -1,0 +1,11 @@
+import { view } from '../domain/board.mjs';
+import { day } from '../domain/records.mjs';
+
+export function run(board, { today }) {
+  const cutoff = day(today);
+  if (cutoff === null) throw Error('today must be a nonempty YYYY-MM-DD date');
+
+  return view(board)
+    .filter(item => item.state === 'open' && day(item.due) !== null && item.due < cutoff)
+    .sort((a, b) => a.due.localeCompare(b.due) || a.id - b.id);
+}

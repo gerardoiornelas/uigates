@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/markdown.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/markdown.mjs exporting run(board,input={}) returning a Markdown checklist for nonarchived items sorted by numeric id. Each line is - [ ] TITLE (#ID) or - [x] TITLE (#ID) when done, ending with newline. Escape backslash, backtick, asterisk, underscore, [ and ] in titles with backslash. Replace each CR or LF with a space. Empty board returns empty string. No mutation.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

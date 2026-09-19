@@ -1,0 +1,4 @@
+2026-09-19T00:14:43.900701Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-19T00:14:43.903745Z  WARN codex_rollout::list: state db discrepancy during find_thread_path_by_id_str_in_subdir: falling_back
+2026-09-19T00:14:45.182638Z  WARN codex_core::session_startup_prewarm: startup websocket prewarm setup failed: You’ve hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Sep 19th, 2026 7:23 AM.
+2026-09-19T00:32:18.806495Z  WARN codex_analytics::client: failed to send events request: error sending request for url (https://chatgpt.com/backend-api/codex/analytics-events/events)

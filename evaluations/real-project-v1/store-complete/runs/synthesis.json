@@ -1,0 +1,22 @@
+{
+  "body": {
+    "id": "synthesis",
+    "taskId": "synthesis",
+    "mode": "synthesis",
+    "project": "workboard",
+    "trace": "0b9e8fb7d5c20a5a93e4d7ce81389318caf64206501a0ae271d2e411880653fa",
+    "stderr": "09e6a7c9601f174a60676090688fa51f2fd9bdcbfbbdfb9255c7dc1b6b88c3f1",
+    "prompt": "7561756db2f29fb7e2f9865bce1e22b0a52b9e5cdd8bf98d101fbbe311743772",
+    "processExitCode": 0,
+    "timedOut": false,
+    "usage": {
+      "complete": true,
+      "input": 26184,
+      "output": 506,
+      "cached": 11520,
+      "total": 26690,
+      "turns": 1
+    }
+  },
+  "sha256": "635369adbc668b17bc2f3e9c490a7acae97d95a7f8138aacd139393c33989406"
+}

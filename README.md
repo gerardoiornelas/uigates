@@ -57,7 +57,7 @@ The principal owns objectives and risk decisions. Agents can be technically capa
 UI-GATES does not treat every observation as permanent memory. Learning earns promotion:
 
 ```text
-Ephemeral → Task → Decision → Pattern → Canon
+Ephemeral → Task → Decision → Knowledge → Canon
 ```
 
 Each promoted artifact must link to its source, supporting evidence, and reuse guidance. See [the knowledge model](docs/knowledge-model.md).
@@ -68,14 +68,21 @@ Each promoted artifact must link to its source, supporting evidence, and reuse g
 docs/                 # Public system specification
 skills/uig/           # Portable short-form skill: `uig`
 skills/ui-gates/      # Formal UI-GATES skill
-plugins/uigates/      # Installable Codex plugin
+plugins/uigates/      # Installable Codex plugin (skills); core/ is a reference engine, not run by uig
 ```
 
 Project integrations should keep their own committed local context bundles and generated Graphify outputs. See [the integration model](docs/architecture.md).
 
 ## Status
 
-This is the documentation-first reference implementation. The initial objective is a usable Codex skill and a single-project proving loop before introducing a control-plane service or plugin.
+The portable skill is available alongside a reference authority engine and an optional executable learning/evaluation harness. The harness runs real coding agents, retains source-bound lessons, compares frozen control/treatment tasks and reports scoped evidence with full token accounting. It does not certify arbitrary future coding tasks or retrain model weights.
+
+```bash
+node plugins/uigates/learning/cli.mjs help
+node --test plugins/uigates/learning/learning.test.mjs
+```
+
+Read [evidence-backed coding-agent learning](docs/certified-learning.md) for the workflow, confidence thresholds, accounting and trust boundaries. The [Workboard project](examples/workboard/README.md) is the real coding workload; its [evaluation artifacts](evaluations/real-project-v1/) preserve the frozen experiment and actual results. A positive performance claim must come from a completed certificate, not from the existence of this implementation.
 
 ## Read next
 

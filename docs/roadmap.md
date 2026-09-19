@@ -18,7 +18,7 @@ status: active
 
 ## Phase 1 — Single-project proving loop
 
-- Run one real software task through intent, proposal, delegated local execution, tests, receipt, and pattern promotion.
+- Run one real software task through intent, proposal, delegated local execution, tests, receipt, and knowledge promotion.
 - Use the repository's existing test contract as the minimum verification gate.
 - Refresh Graphify after the learning update.
 
@@ -34,4 +34,4 @@ Create a plugin only when deterministic tooling is necessary for policy evaluati
 
 ## Phase 4 — Cross-project operation
 
-Add explicit, reviewable promotion paths for patterns and canon that are proven reusable across projects. Project-local rules remain authoritative.
+Add explicit, reviewable promotion paths for knowledge and canon that are proven reusable across projects. Project-local rules remain authoritative.

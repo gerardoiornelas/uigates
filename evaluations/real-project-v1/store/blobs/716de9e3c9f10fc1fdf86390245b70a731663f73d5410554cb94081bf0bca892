@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/csv.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/csv.mjs exporting run(board,input={}) returning a CSV string for ALL records sorted by numeric id. Header id,title,state,priority,labels,due,revision. Join labels with |; null due is empty. Use CRLF between rows and a trailing CRLF. Quote fields containing comma, quote, CR or LF and double internal quotes. No mutation.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

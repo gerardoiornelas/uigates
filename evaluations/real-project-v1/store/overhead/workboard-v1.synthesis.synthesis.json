@@ -1,0 +1,12 @@
+{
+  "body": {
+    "planId": "workboard-v1",
+    "phase": "synthesis",
+    "kind": "model",
+    "runId": "synthesis",
+    "trace": "0b9e8fb7d5c20a5a93e4d7ce81389318caf64206501a0ae271d2e411880653fa",
+    "processExitCode": 0,
+    "timedOut": false
+  },
+  "sha256": "e78ff67c1f438c6ffd563149ef3fc0a99e81697c3476d9070bff05cef8232f08"
+}

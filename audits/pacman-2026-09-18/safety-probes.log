@@ -1,0 +1,93 @@
+[ReceiptStore] Recorded receipt r1 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r3 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r4 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Contradicted lesson (task/conflicted): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r2 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r5 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r6 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] WARNING: Receipt r7 submitted with NO evidence.
+[ReceiptStore] Recorded receipt r7 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Contradicted lesson (task/conflicted): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r8 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r9 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+[ReceiptStore] Recorded receipt r10 for action pacman:collision:swept
+[CE] Synthesizing knowledge from 1 receipts...
+[CE] Promoted lesson (task/verified): lesson_pacman_collision_swept_a96e3722.md
+AUDIT FINDINGS: 8/8 desired properties violated
+[
+  {
+    "name": "nonexistent evidence should not be called verified",
+    "pass": false,
+    "actual": [
+      "verified"
+    ],
+    "expected": "no verified lesson",
+    "category": "documented verification limitation"
+  },
+  {
+    "name": "older delayed success must not clear newer failure",
+    "pass": false,
+    "before": "conflicted",
+    "actual": "verified",
+    "expected": "conflicted",
+    "category": "chronology defect"
+  },
+  {
+    "name": "invalid receipt time must not satisfy authority window",
+    "pass": false,
+    "actual": 1,
+    "expected": 0,
+    "category": "invalid time accepted"
+  },
+  {
+    "name": "unknown outcome is unverified rather than contradictory",
+    "pass": false,
+    "actual": "conflicted",
+    "expected": "verified (retain prior evidence; pending is not a failure)",
+    "category": "classification defect"
+  },
+  {
+    "name": "filesystem pack edit cannot self-promote to Canon",
+    "pass": false,
+    "actual": "canon",
+    "expected": "reject unsupported promotion",
+    "category": "trusted-filesystem boundary"
+  },
+  {
+    "name": "domain matching must respect path boundaries",
+    "pass": false,
+    "actual": "delegated",
+    "expected": "prohibited",
+    "category": "resource scope defect"
+  },
+  {
+    "name": "mutating verification plan after evaluation must invalidate approval",
+    "pass": false,
+    "actual": "authorized changed plan",
+    "expected": "rejected",
+    "category": "incomplete proposal binding"
+  },
+  {
+    "name": "new success updates evidence shown to next task",
+    "pass": false,
+    "actual": "first-run.log",
+    "expected": "new-run.log retained alongside first-run.log",
+    "category": "stale evidence summary"
+  }
+]

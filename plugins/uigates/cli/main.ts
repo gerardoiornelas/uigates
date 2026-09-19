@@ -74,9 +74,9 @@ async function main() {
 
     case 'authorize': {
       const propId = args[1];
-      const state = (args[2] as AuthorityState) || 'delegated';
+      const state = args[2] as AuthorityState | undefined;
       if (!propId) {
-        console.error('Usage: uig authorize <propId> [delegated|gated|prohibited]');
+        console.error('Usage: uig authorize <propId> [state]  (must match the evaluated state; omit to accept it)');
         process.exit(1);
       }
 
@@ -86,56 +86,38 @@ async function main() {
         process.exit(1);
       }
 
-      const auth: Authorization = {
-        id: `auth_${Date.now()}`,
-        proposalId: proposal.id,
-        authorizedBy: 'current_user',
-        state: state,
-        authorizedAt: new Date(),
-      };
+      const intent = store.getIntent(proposal.intentId);
+      if (!intent) {
+        console.error('Intent not found.');
+        process.exit(1);
+      }
+
+      // Authority is only issued for what the engine evaluates, in the principal's name.
+      const evaluation = govEngine.evaluate(proposal, intent);
+      if (evaluation.denied) {
+        console.error(`Denied: ${evaluation.rationale}`);
+        process.exit(1);
+      }
+      if (state && state !== evaluation.suggestedState) {
+        console.error(`Cannot authorize as ${state}: evaluation resolved to ${evaluation.suggestedState}. ${evaluation.rationale}`);
+        process.exit(1);
+      }
+      const auth: Authorization = govEngine.authorize(proposal, intent.principalId, evaluation.suggestedState);
 
       store.saveAuthorization(auth);
-      console.log(`UI-GATES: Proposal ${propId} authorized as ${state}.`);
+      console.log(`UI-GATES: Proposal ${propId} authorized as ${auth.state}.`);
       break;
     }
 
     case 'receipt': {
-      const authId = args[1];
-      if (!authId) {
-        console.error('Usage: uig receipt <authId>');
-        process.exit(1);
-      }
-
-      const auth = store.getAuthorization(authId);
-      if (!auth) {
-        console.error('Authorization not found.');
-        process.exit(1);
-      }
-
-      const proposal = store.getProposal(auth.proposalId);
-
-      const receipt = {
-        id: `rec_${Date.now()}`,
-        authorizationId: auth.id,
-        intentId: proposal?.intentId || 'unknown',
-        actorId: proposal?.actorId || 'unknown',
-        actionPerformed: proposal?.action || 'unknown',
-        expectedOutcome: proposal?.verificationPlan || 'none',
-        actualOutcome: 'Success: Verified via tests',
-        delta: 'None',
-        evidence: ['test_result.log'],
-        verifiedAt: new Date(),
-      };
-
-      store.saveReceipt(receipt);
-      console.log(`UI-GATES: Receipt recorded. ID: ${receipt.id}`);
-      break;
+      throw new Error('Synthetic success receipts have been removed. Use node plugins/uigates/learning/cli.mjs discover or run to record actual execution, independent checks and token telemetry.');
     }
 
     default:
       console.log('UI-GATES CLI');
-      console.log('Commands: start <goal>, propose <intentId>, authorize <propId> <state>, receipt <authId>');
+      console.log('Commands: start <goal>, propose <intentId>, authorize <propId> <state>');
+      console.log('For real execution evidence and learning: node plugins/uigates/learning/cli.mjs help');
   }
 }
 
-main().catch(console.error);
+main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,0 +1,86 @@
+{
+  "intent": {
+    "id": "1-0-discovery",
+    "principalId": "audit-fixture",
+    "goal": "Verify Pac-Man semantics",
+    "constraints": [
+      "Only local fixture executions"
+    ],
+    "successEvidence": [
+      "behavior results"
+    ],
+    "authorityDomain": [
+      "examples/pacman-audit/"
+    ],
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "createdAt": "2026-09-18T23:33:53.466Z"
+  },
+  "proposal": {
+    "id": "p2",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "action": "pacman:tunnel:c",
+    "resource": "examples/pacman-audit/engine.mjs",
+    "rationale": "Verify tunnel",
+    "impact": "low",
+    "risk": "Disposable simulation only",
+    "authorityRequested": "delegated",
+    "verificationPlan": "Execute tunnel behavior checks",
+    "proposedAt": "2026-09-18T23:33:53.473Z",
+    "taskId": "tunnel",
+    "replan": {
+      "after": "r1",
+      "rootCause": "left tunnel wraps to opposite edge; right tunnel wraps to opposite edge",
+      "revision": "Execute candidate c instead"
+    }
+  },
+  "authorization": {
+    "id": "auth_fca90f07-02e7-4bff-ba5b-b635d8642d3e",
+    "proposalId": "p2",
+    "authorizedBy": "audit-fixture",
+    "state": "delegated",
+    "authorizedAt": "2026-09-18T23:33:53.473Z",
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "actorId": "fixture-worker",
+    "intentId": "1-0-discovery",
+    "action": "pacman:tunnel:c",
+    "resource": "examples/pacman-audit/engine.mjs"
+  },
+  "receipt": {
+    "id": "r2",
+    "authorizationId": "auth_fca90f07-02e7-4bff-ba5b-b635d8642d3e",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "actionPerformed": "pacman:tunnel:c",
+    "expectedOutcome": "Execute tunnel behavior checks",
+    "actualOutcome": "Failed behavioral verification",
+    "delta": "left tunnel wraps to opposite edge",
+    "evidence": [
+      "attempts.json#1 sha256:57033c159d0da41bf450496d4504a41d81fc6476a28714abdc46700de64f662e"
+    ],
+    "verifiedAt": "2026-09-18T23:33:53.473Z",
+    "taskId": "tunnel"
+  },
+  "evidence": {
+    "seed": 1,
+    "variant": 0,
+    "arm": "discovery",
+    "family": "tunnel",
+    "candidate": "c",
+    "checks": [
+      {
+        "name": "left tunnel wraps to opposite edge",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n0 !== 6\n"
+      },
+      {
+        "name": "right tunnel wraps to opposite edge",
+        "pass": true
+      },
+      {
+        "name": "closed endpoint cannot wrap",
+        "pass": true
+      }
+    ]
+  }
+}

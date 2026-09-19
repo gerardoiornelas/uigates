@@ -1,0 +1,19 @@
+{
+  "name": "uigates",
+  "version": "0.1.0",
+  "description": "UI-GATES authority-aware learning workflow for Codex.",
+  "author": {
+    "name": "Gerardo I. Ornelas",
+    "url": "https://gerardoiornelas.com"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "UI-GATES",
+    "shortDescription": "Authority-aware work that learns from evidence.",
+    "longDescription": "UI-GATES grounds meaningful agent work in intent, bounded authority, verification evidence, and repository-native learning.",
+    "developerName": "Gerardo I. Ornelas",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": "Use UIG to plan this change with evidence."
+  }
+}

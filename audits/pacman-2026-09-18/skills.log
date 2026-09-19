@@ -1,0 +1,11 @@
+
+=== SKILL COPIES: every copy carries the essentials ===
+
+  PASS  skills/uig/SKILL.md
+  PASS  skills/ui-gates/SKILL.md
+  PASS  .claude/skills/uig/SKILL.md
+  PASS  .agents/skills/uig/SKILL.md
+  PASS  plugins/uigates/skills/uig/SKILL.md
+  PASS  .claude and .agents copies are identical
+
+=== SUMMARY: all copies consistent ===

@@ -1,0 +1,85 @@
+{
+  "intent": {
+    "id": "1-0-discovery",
+    "principalId": "audit-fixture",
+    "goal": "Verify Pac-Man semantics",
+    "constraints": [
+      "Only local fixture executions"
+    ],
+    "successEvidence": [
+      "behavior results"
+    ],
+    "authorityDomain": [
+      "examples/pacman-audit/"
+    ],
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "createdAt": "2026-09-18T23:33:53.466Z"
+  },
+  "proposal": {
+    "id": "p3",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "action": "pacman:tunnel:b",
+    "resource": "examples/pacman-audit/engine.mjs",
+    "rationale": "Verify tunnel",
+    "impact": "low",
+    "risk": "Disposable simulation only",
+    "authorityRequested": "delegated",
+    "verificationPlan": "Execute tunnel behavior checks",
+    "proposedAt": "2026-09-18T23:33:53.473Z",
+    "taskId": "tunnel",
+    "replan": {
+      "after": "r2",
+      "rootCause": "left tunnel wraps to opposite edge",
+      "revision": "Execute candidate b instead"
+    }
+  },
+  "authorization": {
+    "id": "auth_746b5188-d59d-4144-a712-e2b48089d93c",
+    "proposalId": "p3",
+    "authorizedBy": "audit-fixture",
+    "state": "delegated",
+    "authorizedAt": "2026-09-18T23:33:53.473Z",
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "actorId": "fixture-worker",
+    "intentId": "1-0-discovery",
+    "action": "pacman:tunnel:b",
+    "resource": "examples/pacman-audit/engine.mjs"
+  },
+  "receipt": {
+    "id": "r3",
+    "authorizationId": "auth_746b5188-d59d-4144-a712-e2b48089d93c",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "actionPerformed": "pacman:tunnel:b",
+    "expectedOutcome": "Execute tunnel behavior checks",
+    "actualOutcome": "Verified success",
+    "delta": "None",
+    "evidence": [
+      "attempts.json#2 sha256:7f42b497331be539be35a8e5faa77283790e75fa32c7ab87ebf2ae2428fd2433"
+    ],
+    "verifiedAt": "2026-09-18T23:33:53.474Z",
+    "taskId": "tunnel"
+  },
+  "evidence": {
+    "seed": 1,
+    "variant": 0,
+    "arm": "discovery",
+    "family": "tunnel",
+    "candidate": "b",
+    "checks": [
+      {
+        "name": "left tunnel wraps to opposite edge",
+        "pass": true
+      },
+      {
+        "name": "right tunnel wraps to opposite edge",
+        "pass": true
+      },
+      {
+        "name": "closed endpoint cannot wrap",
+        "pass": true
+      }
+    ]
+  }
+}

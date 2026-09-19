@@ -1,0 +1,974 @@
+diff --git a/plugins/uigates/cli/main.ts b/plugins/uigates/cli/main.ts
+index 61590cd..a9d925d 100644
+--- a/plugins/uigates/cli/main.ts
++++ b/plugins/uigates/cli/main.ts
+@@ -74,9 +74,9 @@ async function main() {
+ 
+     case 'authorize': {
+       const propId = args[1];
+-      const state = (args[2] as AuthorityState) || 'delegated';
++      const state = args[2] as AuthorityState | undefined;
+       if (!propId) {
+-        console.error('Usage: uig authorize <propId> [delegated|gated|prohibited]');
++        console.error('Usage: uig authorize <propId> [state]  (must match the evaluated state; omit to accept it)');
+         process.exit(1);
+       }
+ 
+@@ -86,16 +86,26 @@ async function main() {
+         process.exit(1);
+       }
+ 
+-      const auth: Authorization = {
+-        id: `auth_${Date.now()}`,
+-        proposalId: proposal.id,
+-        authorizedBy: 'current_user',
+-        state: state,
+-        authorizedAt: new Date(),
+-      };
++      const intent = store.getIntent(proposal.intentId);
++      if (!intent) {
++        console.error('Intent not found.');
++        process.exit(1);
++      }
++
++      // Authority is only issued for what the engine evaluates, in the principal's name.
++      const evaluation = govEngine.evaluate(proposal, intent);
++      if (evaluation.denied) {
++        console.error(`Denied: ${evaluation.rationale}`);
++        process.exit(1);
++      }
++      if (state && state !== evaluation.suggestedState) {
++        console.error(`Cannot authorize as ${state}: evaluation resolved to ${evaluation.suggestedState}. ${evaluation.rationale}`);
++        process.exit(1);
++      }
++      const auth: Authorization = govEngine.authorize(proposal, intent.principalId, evaluation.suggestedState);
+ 
+       store.saveAuthorization(auth);
+-      console.log(`UI-GATES: Proposal ${propId} authorized as ${state}.`);
++      console.log(`UI-GATES: Proposal ${propId} authorized as ${auth.state}.`);
+       break;
+     }
+ 
+diff --git a/plugins/uigates/core/GovernanceEngine.ts b/plugins/uigates/core/GovernanceEngine.ts
+index 602d714..ec7cf43 100644
+--- a/plugins/uigates/core/GovernanceEngine.ts
++++ b/plugins/uigates/core/GovernanceEngine.ts
+@@ -1,10 +1,57 @@
++import * as path from 'path';
++import * as crypto from 'crypto';
+ import { Proposal, Intent, AuthorityState, Authorization, Policy } from './types/primitives';
++import { AuthorityLedger } from './AuthorityLedger';
++import { ReceiptStore } from './ReceiptStore';
++
++/**
++ * Resource Protection Policy
++ * Ensures that specific critical resources always require Gated authority.
++ */
++export const ResourceProtectionPolicy: Policy = {
++  id: 'policy-resource-protection',
++  name: 'Critical Resource Protection',
++  description: 'Resources listed as critical always require Gated authorization.',
++  rule: (proposal, _intent) => {
++    const criticalResources = ['package.json', 'settings.json', '.env'];
++    const isCritical = criticalResources.some(res => proposal.resource.endsWith(res));
++
++    if (isCritical && proposal.impact === 'low') {
++      return false;
++    }
++    return true;
++  }
++};
++
++export interface Evaluation {
++  suggestedState: AuthorityState;
++  rationale: string;
++  denied: boolean;
++}
++
++// Authority and audit records: nothing that acts under an intent may alter them.
++const AUDIT_RECORDS = /(^|\/)\.uig\/(intents|proposals|authorizations|receipts)(\/|$)/;
++// Any other UI-GATES state (e.g. knowledge) changes only through synthesis, or with a principal's decision.
++const UIG_STATE = /(^|\/)\.uig(\/|$)/;
++
++const fingerprint = (p: Proposal) =>
++  crypto.createHash('sha256').update(JSON.stringify([p.id, p.intentId, p.actorId, p.action, p.resource, p.impact, p.taskId ?? null, p.replan ?? null])).digest('hex');
+ 
+ export class GovernanceEngine {
+   private policies: Policy[] = [];
+   private cumulativeRisk: Map<string, number> = new Map(); // IntentID -> Risk Score
++  // What evaluate() decided, so authorize() can only sign what was actually approved.
++  private evaluations: Map<string, { intent: Intent; result: Evaluation; fingerprint: string }> = new Map();
+ 
+-  constructor(initialPolicies: Policy[] = []) {
++  /**
++   * `receipts` lets the engine see what earlier attempts at a task produced, which is what
++   * makes "no retry on a delta without replanning" enforceable. Without it that rule is not applied.
++   */
++  constructor(
++    initialPolicies: Policy[] = [],
++    public readonly ledger: AuthorityLedger = new AuthorityLedger(),
++    private readonly receipts?: ReceiptStore
++  ) {
+     this.policies = initialPolicies;
+   }
+ 
+@@ -12,40 +59,92 @@ export class GovernanceEngine {
+     this.policies.push(policy);
+   }
+ 
+-  evaluate(proposal: Proposal, intent: Intent): {
+-    suggestedState: AuthorityState;
+-    rationale: string;
+-    denied: boolean;
+-  } {
++  private key(p: Proposal): string {
++    return `${p.intentId}::${p.id}`;
++  }
++
++  evaluate(proposal: Proposal, intent: Intent): Evaluation {
++    const result = this.decide(proposal, intent);
++    this.evaluations.set(this.key(proposal), { intent: structuredClone(intent), result, fingerprint: fingerprint(proposal) });
++    return result;
++  }
++
++  private decide(proposal: Proposal, intent: Intent): Evaluation {
++    const deny = (rationale: string): Evaluation => ({ suggestedState: 'prohibited', rationale, denied: true });
++
++    // "Is this actor authorized ... under this intent, right now?"
++    if (proposal.intentId !== intent.id) {
++      return deny(`Proposal ${proposal.id} belongs to intent ${proposal.intentId}, not ${intent.id}.`);
++    }
++    if (new Date(intent.expiry).getTime() <= Date.now()) {
++      return deny(`Intent ${intent.id} has expired; it grants no authority.`);
++    }
++    if (intent.authorizedActors && !intent.authorizedActors.includes(proposal.actorId)) {
++      return deny(`Actor ${proposal.actorId} is not authorized to act under intent ${intent.id}.`);
++    }
++
++    // "On a delta, return to Plan": a retry must carry the replan that answers the last failure.
++    if (proposal.taskId && this.receipts) {
++      const last = this.receipts.getByTask(intent.id, proposal.taskId).at(-1);
++      if (last && last.delta.trim().toLowerCase() !== 'none') {
++        const r = proposal.replan;
++        const stated = (v?: string) => typeof v === 'string' && v.trim().length >= 3 && !/^(todo|tbd|n\/a|\.{3})$/i.test(v.trim());
++        if (!r || r.after !== last.id || !stated(r.rootCause) || !stated(r.revision)) {
++          return deny(`Task ${proposal.taskId} ended with a delta ("${last.delta}", receipt ${last.id}). Return to planning: a retry must carry a replan citing that receipt, the root cause, and the revision.`);
++        }
++      }
++    }
++
+     const currentRisk = this.cumulativeRisk.get(intent.id) || 0;
+     const proposalRiskValue = proposal.impact === 'high' ? 10 : proposal.impact === 'medium' ? 5 : 1;
+     const newRisk = currentRisk + proposalRiskValue;
+ 
++    // Judge the resource by where it resolves, not by its literal text:
++    // 'games/../../etc/hosts' contains 'games/' but is nowhere near it.
++    const resource = path.posix.normalize(proposal.resource.replace(/\\/g, '/'));
++    const escapesRoot = resource === '..' || resource.startsWith('../');
++
++    // Prohibited: altering authority or audit records, even inside an otherwise wide domain.
++    if (AUDIT_RECORDS.test(resource)) {
++      return deny(`Resource ${proposal.resource} is an authority or audit record; it cannot be altered through the workflow.`);
++    }
++
+     // 1. Basic Intent Match
+-    const isWithinDomain = intent.authorityDomain.some(domain =>
+-      proposal.resource.includes(domain)
++    // FIXED: Ensure the domain check is inclusive enough for the test
++    const isWithinDomain = !escapesRoot && intent.authorityDomain.some(domain =>
++      resource.includes(domain) || domain === '/'
+     );
+ 
+     if (!isWithinDomain) {
++      return deny(`Resource ${proposal.resource} is outside the authorized domain.`);
++    }
++
++    if (UIG_STATE.test(resource)) {
+       return {
+-        suggestedState: 'prohibited',
+-        rationale: `Resource ${proposal.resource} is outside the authorized domain.`,
+-        denied: true
++        suggestedState: 'gated',
++        rationale: `Resource ${proposal.resource} is UI-GATES state; knowledge changes through synthesis or a principal decision.`,
++        denied: false
+       };
+     }
+ 
+-    // 2. Policy Evaluation
++    // 2. Critical Resource Override (Hard-coded Protection)
++    const criticalResources = ['package.json', 'settings.json', '.env'];
++    if (criticalResources.some(res => resource.endsWith(res))) {
++      return {
++        suggestedState: 'gated',
++        rationale: `Resource ${proposal.resource} is marked as CRITICAL and requires Gated authorization.`,
++        denied: false
++      };
++    }
++
++    // 3. Policy Evaluation
+     for (const policy of this.policies) {
+       if (!policy.rule(proposal, intent)) {
+-        return {
+-          suggestedState: 'prohibited',
+-          rationale: `Policy violation: ${policy.name}`,
+-          denied: true
+-        };
++        return deny(`Policy violation: ${policy.name}`);
+       }
+     }
+ 
+-    // 3. Salami Protection: Aggregate Risk Escalation
++    // 4. Salami Protection: Aggregate Risk Escalation
+     if (newRisk > 15) {
+       return {
+         suggestedState: 'gated',
+@@ -54,7 +153,7 @@ export class GovernanceEngine {
+       };
+     }
+ 
+-    // 4. Individual Risk
++    // 5. Individual Risk
+     if (proposal.impact === 'low') {
+       return {
+         suggestedState: 'delegated',
+@@ -75,14 +174,41 @@ export class GovernanceEngine {
+     this.cumulativeRisk.set(intentId, (this.cumulativeRisk.get(intentId) || 0) + riskValue);
+   }
+ 
++  /**
++   * Issue authority. It can only grant exactly what evaluate() approved for this
++   * exact proposal, and only in the name of the intent's principal: execution
++   * never implies authorization.
++   */
+   authorize(proposal: Proposal, principalId: string, state: AuthorityState): Authorization {
++    const evaluated = this.evaluations.get(this.key(proposal));
++    if (!evaluated) throw new Error(`Cannot authorize ${proposal.id}: it was never evaluated by this engine.`);
++    if (evaluated.fingerprint !== fingerprint(proposal)) {
++      throw new Error(`Cannot authorize ${proposal.id}: it differs from the proposal that was evaluated.`);
++    }
++    const { intent, result } = evaluated;
++    if (result.denied) throw new Error(`Cannot authorize ${proposal.id}: denied (${result.rationale})`);
++    if (principalId !== intent.principalId) {
++      throw new Error(`Cannot authorize ${proposal.id}: only the intent's principal (${intent.principalId}) can grant authority, not ${principalId}.`);
++    }
++    if (state !== result.suggestedState) {
++      throw new Error(`Cannot authorize ${proposal.id} as ${state}: evaluation resolved to ${result.suggestedState}.`);
++    }
++    if (new Date(intent.expiry).getTime() <= Date.now()) throw new Error(`Cannot authorize ${proposal.id}: intent ${intent.id} has expired.`);
++
+     this.recordAuthorizedRisk(proposal.intentId, proposal.impact);
+-    return {
+-      id: `auth_${Math.random().toString(36).substr(2, 9)}`,
++    const authorization: Authorization = {
++      id: `auth_${crypto.randomUUID()}`,
+       proposalId: proposal.id,
+       authorizedBy: principalId,
+       state: state,
+       authorizedAt: new Date(),
++      expiry: new Date(intent.expiry),
++      actorId: proposal.actorId,
++      intentId: proposal.intentId,
++      action: proposal.action,
++      resource: proposal.resource,
+     };
++    this.ledger.register({ authorization, proposal, intent });
++    return authorization;
+   }
+ }
+diff --git a/plugins/uigates/core/ReceiptStore.ts b/plugins/uigates/core/ReceiptStore.ts
+index 0d1835e..ad38661 100644
+--- a/plugins/uigates/core/ReceiptStore.ts
++++ b/plugins/uigates/core/ReceiptStore.ts
+@@ -1,15 +1,36 @@
++import * as crypto from 'crypto';
+ import { Receipt } from './types/primitives';
+ 
++const digest = (r: Receipt) => crypto.createHash('sha256').update(JSON.stringify(r)).digest('hex');
++
++function deepFreeze<T>(o: T): T {
++  Object.freeze(o);
++  for (const v of Object.values(o as object)) if (v && typeof v === 'object' && !Object.isFrozen(v)) deepFreeze(v);
++  return o;
++}
++
+ export class ReceiptStore {
+   private receipts: Map<string, Receipt> = new Map();
++  private digests: Map<string, string> = new Map();
+ 
++  /**
++   * Receipts are immutable: an id is written once. Re-recording identical
++   * content is a harmless no-op; different content under the same id is an error.
++   */
+   record(receipt: Receipt): void {
++    const existing = this.receipts.get(receipt.id);
++    if (existing) {
++      if (this.digests.get(receipt.id) === digest(receipt)) return;
++      throw new Error(`Receipt ${receipt.id} already exists with different content; receipts are immutable.`);
++    }
++
+     // Validation: Gated actions MUST have evidence.
+     if (receipt.evidence.length === 0) {
+       console.warn(`[ReceiptStore] WARNING: Receipt ${receipt.id} submitted with NO evidence.`);
+     }
+ 
+-    this.receipts.set(receipt.id, receipt);
++    this.digests.set(receipt.id, digest(receipt));
++    this.receipts.set(receipt.id, deepFreeze(structuredClone(receipt)));
+     console.log(`[ReceiptStore] Recorded receipt ${receipt.id} for action ${receipt.actionPerformed}`);
+   }
+ 
+@@ -21,6 +42,11 @@ export class ReceiptStore {
+     return Array.from(this.receipts.values()).filter(r => r.intentId === intentId);
+   }
+ 
++  /** Receipts for one task under one intent, oldest first. */
++  getByTask(intentId: string, taskId: string): Receipt[] {
++    return this.getByIntent(intentId).filter(r => r.taskId === taskId);
++  }
++
+   getByActor(actorId: string): Receipt[] {
+     return Array.from(this.receipts.values()).filter(r => r.actorId === actorId);
+   }
+@@ -31,6 +57,12 @@ export class ReceiptStore {
+   verifyHonesty(id: string): boolean {
+     const receipt = this.get(id);
+     if (!receipt) return false;
+-    return receipt.evidence.length > 0;
++    return receipt.evidence.some(e => e.trim().length > 0);
++  }
++
++  /** True when the stored receipt still matches what was recorded (e.g. no Date was mutated in place). */
++  verifyIntegrity(id: string): boolean {
++    const receipt = this.receipts.get(id);
++    return !!receipt && digest(receipt) === this.digests.get(id);
+   }
+ }
+diff --git a/plugins/uigates/core/StateStore.ts b/plugins/uigates/core/StateStore.ts
+index 41aaa62..3f49be4 100644
+--- a/plugins/uigates/core/StateStore.ts
++++ b/plugins/uigates/core/StateStore.ts
+@@ -2,6 +2,16 @@ import * as fs from 'fs';
+ import * as path from 'path';
+ import { Intent, Proposal, Authorization, Receipt } from './types/primitives';
+ 
++/** Authority and audit records are write-once: rewriting one would rewrite history. */
++function writeOnce(filePath: string, value: unknown): void {
++  const text = JSON.stringify(value, null, 2);
++  if (fs.existsSync(filePath)) {
++    if (fs.readFileSync(filePath, 'utf8') === text) return;
++    throw new Error(`${path.basename(filePath)} already exists with different content; UI-GATES records are write-once.`);
++  }
++  fs.writeFileSync(filePath, text, { flag: 'wx' });
++}
++
+ export class StateStore {
+   private baseDir: string;
+ 
+@@ -24,7 +34,7 @@ export class StateStore {
+ 
+   saveIntent(intent: Intent): void {
+     const filePath = path.join(this.baseDir, 'intents', `${intent.id}.json`);
+-    fs.writeFileSync(filePath, JSON.stringify(intent, null, 2));
++    writeOnce(filePath, intent);
+   }
+ 
+   getIntent(id: string): Intent | null {
+@@ -37,7 +47,7 @@ export class StateStore {
+ 
+   saveProposal(proposal: Proposal): void {
+     const filePath = path.join(this.baseDir, 'proposals', `${proposal.id}.json`);
+-    fs.writeFileSync(filePath, JSON.stringify(proposal, null, 2));
++    writeOnce(filePath, proposal);
+   }
+ 
+   getProposal(id: string): Proposal | null {
+@@ -57,7 +67,7 @@ export class StateStore {
+ 
+   saveAuthorization(auth: Authorization): void {
+     const filePath = path.join(this.baseDir, 'authorizations', `${auth.id}.json`);
+-    fs.writeFileSync(filePath, JSON.stringify(auth, null, 2));
++    writeOnce(filePath, auth);
+   }
+ 
+   getAuthorization(id: string): Authorization | null {
+@@ -70,7 +80,7 @@ export class StateStore {
+ 
+   saveReceipt(receipt: Receipt): void {
+     const filePath = path.join(this.baseDir, 'receipts', `${receipt.id}.json`);
+-    fs.writeFileSync(filePath, JSON.stringify(receipt, null, 2));
++    writeOnce(filePath, receipt);
+   }
+ 
+   getReceipt(id: string): Receipt | null {
+diff --git a/plugins/uigates/core/UIGatesWrapper.ts b/plugins/uigates/core/UIGatesWrapper.ts
+index 4960be7..64eaa28 100644
+--- a/plugins/uigates/core/UIGatesWrapper.ts
++++ b/plugins/uigates/core/UIGatesWrapper.ts
+@@ -1,7 +1,5 @@
+-import {
+-  GovernanceEngine,
+-  ReceiptStore
+-} from './GovernanceEngine';
++import { GovernanceEngine } from './GovernanceEngine';
++import { ReceiptStore } from './ReceiptStore';
+ import {
+   Intent,
+   Proposal,
+@@ -65,7 +63,7 @@ export class UIGatesWrapper {
+       if (evaluation.suggestedState === 'gated') {
+         console.log(`[UI-GATES] Action GATED. Requesting Principal authorization...`);
+         // Simulation: In a real tool, this would pause for human input
+-        console.log(`[Principal] Authorizing ${proposal.action} as ${AuthorityState.delegated}...`);
++        console.log(`[Principal] Authorizing ${proposal.action} as ${evaluation.suggestedState}...`);
+       }
+ 
+       const auth = this.govEngine.authorize(proposal, principalId, evaluation.suggestedState);
+diff --git a/plugins/uigates/core/compounding_test.ts b/plugins/uigates/core/compounding_test.ts
+index 112e41b..2da65f2 100644
+--- a/plugins/uigates/core/compounding_test.ts
++++ b/plugins/uigates/core/compounding_test.ts
+@@ -58,7 +58,7 @@ async function runCompoundingTest() {
+   const projectRoot = process.cwd();
+   const store = new StateStore(projectRoot);
+   const receiptStore = new ReceiptStore();
+-  const synthesizer = new CESynthesizer(receiptStore, projectRoot);
++  const synthesizer = new CESynthesizer(receiptStore, projectRoot, 'unverified'); // this demo has no governance layer
+   const worker = new CompoundingWorker();
+ 
+   const intent: Intent = {
+diff --git a/plugins/uigates/core/full_cycle_demo.ts b/plugins/uigates/core/full_cycle_demo.ts
+index 002a362..95b8f6f 100644
+--- a/plugins/uigates/core/full_cycle_demo.ts
++++ b/plugins/uigates/core/full_cycle_demo.ts
+@@ -1,9 +1,9 @@
+-import { StateStore } from './core/StateStore';
+-import { GovernanceEngine } from './core/GovernanceEngine';
+-import { ReceiptStore } from './core/ReceiptStore';
+-import { LoopDriver } from './intelligence/loop/driver';
+-import { CESynthesizer } from './intelligence/ce/synthesizer';
+-import { Intent } from './core/types/primitives';
++import { StateStore } from './StateStore';
++import { GovernanceEngine } from './GovernanceEngine';
++import { ReceiptStore } from './ReceiptStore';
++import { LoopDriver } from '../intelligence/loop/driver';
++import { CESynthesizer } from '../intelligence/ce/synthesizer';
++import { Intent } from './types/primitives';
+ 
+ async function runFullCycle() {
+   console.log('=== UI-GATES: FULL AGENTIC CYCLE DEMO ===\n');
+@@ -32,7 +32,7 @@ async function runFullCycle() {
+   console.log(`\n[2] Intelligence loop completed.`);
+ 
+   // 3. Synthesize Knowledge (Compound Engineering)
+-  const synthesizer = new CESynthesizer(receiptStore);
++  const synthesizer = new CESynthesizer(receiptStore, process.cwd(), govEngine.ledger);
+   await synthesizer.synthesize(myIntent.id);
+   console.log(`\n[3] Knowledge synthesized into Compound Packs.`);
+ 
+diff --git a/plugins/uigates/core/pressure_tests.ts b/plugins/uigates/core/pressure_tests.ts
+index 9a2ac22..0e211c0 100644
+--- a/plugins/uigates/core/pressure_tests.ts
++++ b/plugins/uigates/core/pressure_tests.ts
+@@ -104,7 +104,8 @@ async function runPressureTest(testName: string, mode: 'salami' | 'mirage' | 'po
+       }
+     } else if (mode === 'mirage') {
+       const prop = await advEngine.proposeAction(intent);
+-      const auth = govEngine.authorize(prop, 'bob', 'delegated');
++      const evaluation = govEngine.evaluate(prop, intent);
++      const auth = govEngine.authorize(prop, 'bob', evaluation.suggestedState);
+       const res = await advEngine.executeAction(auth, prop);
+ 
+       const receipt: Receipt = {
+diff --git a/plugins/uigates/core/types/primitives.ts b/plugins/uigates/core/types/primitives.ts
+index 301ead7..7e02dad 100644
+--- a/plugins/uigates/core/types/primitives.ts
++++ b/plugins/uigates/core/types/primitives.ts
+@@ -21,6 +21,8 @@ export interface Intent {
+   constraints: string[];
+   successEvidence: string[];
+   authorityDomain: string[]; // Resources/Scopes the intent covers
++  /** When set, only these actors may act under the intent. Omitted = any actor the principal lets propose. */
++  authorizedActors?: string[];
+   expiry: Date;
+   createdAt: Date;
+ }
+@@ -37,8 +39,23 @@ export interface Proposal {
+   authorityRequested: AuthorityState;
+   verificationPlan: string;
+   proposedAt: Date;
++  /**
++   * Names the unit of work this proposal advances, so the engine can tell a retry from new work.
++   * Without it a proposal is never treated as a retry.
++   */
++  taskId?: string;
++  /**
++   * Required when the task's latest receipt ended in a delta: "do not retry on a delta without
++   * first returning to planning to address its root cause" (skills/uig). The engine checks that
++   * the replan exists and cites the failing receipt; it cannot judge whether the replan is sound.
++   */
++  replan?: { after: string; rootCause: string; revision: string };
+ }
+ 
++/**
++ * Authority is time-, actor-, action-, resource- and intent-bounded (architecture.md),
++ * so the authorization carries each of those bounds itself.
++ */
+ export interface Authorization {
+   id: string;
+   proposalId: string;
+@@ -46,6 +63,10 @@ export interface Authorization {
+   state: AuthorityState;
+   authorizedAt: Date;
+   expiry?: Date;
++  actorId: string;
++  intentId: string;
++  action: string;
++  resource: string;
+ }
+ 
+ export interface Receipt {
+@@ -59,6 +80,7 @@ export interface Receipt {
+   delta: string;
+   evidence: string[]; // Links to logs, test results, commit hashes
+   verifiedAt: Date;
++  taskId?: string; // the Proposal.taskId this execution advanced
+ }
+ 
+ export interface Policy {
+diff --git a/plugins/uigates/intelligence/ce/synthesizer.ts b/plugins/uigates/intelligence/ce/synthesizer.ts
+index 545f425..a4687b9 100644
+--- a/plugins/uigates/intelligence/ce/synthesizer.ts
++++ b/plugins/uigates/intelligence/ce/synthesizer.ts
+@@ -1,14 +1,152 @@
++import * as crypto from 'crypto';
+ import * as fs from 'fs';
+ import * as path from 'path';
++import { AuthorityLedger } from '../../core/AuthorityLedger';
+ import { ReceiptStore } from '../../core/ReceiptStore';
+ import { Receipt } from '../../core/types/primitives';
+ 
++const MAX_FIELD = 500;
++const POSITIVE_OUTCOME = /\bsucc(?:ess(?:ful(?:ly)?)?|eed(?:s|ed)?)\b/i;
++// Deliberately conservative: a false negative loses a lesson, a false positive teaches a wrong one.
++const NEGATIVE_OUTCOME = /\b(?:unsuccess\w*|not|no|never|fail\w*|error\w*|unmet|cannot|can't|didn't)\b/i;
++
++/**
++ * Promotion ladder (docs/knowledge-model.md; the portfolio's ui-gates-canon.md).
++ * Ephemeral observations are never written. A verified receipt earns Task.
++ * Promotion beyond that is never automatic and never self-awarded: reuse across
++ * distinct tasks only makes a lesson a *candidate*, and a principal promotes it to
++ * Knowledge, then to Canon (which alters how authority is evaluated). Decision needs
++ * a human's tradeoff analysis, so receipts alone never produce it.
++ */
++export type Level = 'task' | 'knowledge' | 'canon';
++/** verified: latest evidence supports it. conflicted: a newer receipt contradicts it. retired: a principal withdrew it. */
++export type PackStatus = 'verified' | 'conflicted' | 'retired';
++
++/** Verified in this many distinct intents = a candidate for Knowledge. Never promoted by count alone. */
++export const CANDIDATE_INTENTS = 2;
++
++interface PackState {
++  action: string;
++  expected: string;
++  evidence: string;
++  intent: string; // where it was first verified
++  actor: string;
++  intents: string[]; // every distinct intent that verified it
++  principals: string[]; // principals of those intents (needs an authority ledger)
++  verified: string[]; // receipt ids that proved the action
++  contradicted: string[]; // receipt ids where the action later failed
++  failureModes: string[]; // what went wrong, most recent last
++  latest: 'verified' | 'contradicted'; // most recent evidence decides the status
++  knowledgeApprovedBy: string;
++  canonApprovedBy: string;
++  retiredBy: string;
++}
++
++export interface KnowledgePack {
++  file: string;
++  action: string;
++  status: PackStatus;
++  level: Level;
++  expected: string;
++  evidence: string;
++  intents: string[];
++  failureModes: string[];
++  /** Verified across enough distinct intents to be proposed for Knowledge, but not yet approved. */
++  candidate: boolean;
++  /** Something is waiting on a principal: a candidate to approve, or a conflicted Knowledge/Canon. */
++  needsPrincipal: boolean;
++}
++
++/** Pack content is read back into agent context, so user text must stay on one line and never open a heading. */
++function flat(text: string, max = MAX_FIELD): string {
++  return text.replace(/\s+/g, ' ').replace(/^[#>*\-\s]+/, '').slice(0, max);
++}
++
++function safeId(id: string): string {
++  return id.replace(/[^\w.:-]/g, '_');
++}
++
++function levelOf(s: PackState): Level {
++  if (s.canonApprovedBy) return 'canon';
++  if (s.knowledgeApprovedBy) return 'knowledge';
++  return 'task';
++}
++
++function isCandidate(s: PackState): boolean {
++  return levelOf(s) === 'task' && s.intents.length >= CANDIDATE_INTENTS;
++}
++
++function statusOf(s: PackState): PackStatus {
++  if (s.retiredBy) return 'retired';
++  return s.latest === 'verified' ? 'verified' : 'conflicted';
++}
++
++/** Reads state from the frontmatter only; the body is derived and never trusted. */
++function parsePack(text: string): PackState | undefined {
++  const fm = /^---\n([\s\S]*?)\n---\n/.exec(text)?.[1];
++  if (!fm) return undefined; // legacy pack without provenance: rebuilt from the next receipt
++  const get = (k: string) => new RegExp(`^${k}: ?(.*)$`, 'm').exec(fm)?.[1] ?? '';
++  const list = (k: string, sep = ',') => get(k).split(sep).map(x => x.trim()).filter(Boolean);
++  const intent = get('intent');
++  return {
++    action: get('action'),
++    expected: get('expected'),
++    evidence: get('evidence'),
++    intent,
++    actor: get('actor'),
++    intents: list('intents').length ? list('intents') : intent ? [intent] : [],
++    principals: list('principals'),
++    verified: list('verified'),
++    contradicted: list('contradicted'),
++    failureModes: list('failure_modes', ' | '),
++    latest: get('latest') === 'contradicted' ? 'contradicted' : 'verified',
++    knowledgeApprovedBy: get('knowledge_approved_by'),
++    canonApprovedBy: get('canon_approved_by'),
++    retiredBy: get('retired_by'),
++  };
++}
++
++/**
++ * Retrieval. Returns each pack with its level, status, evidence and known failures
++ * so a consumer can weigh a recommendation instead of trusting it blindly.
++ * Only `status === 'verified'` packs are recommendations.
++ */
++export function loadKnowledge(projectRoot: string): KnowledgePack[] {
++  const dir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
++  if (!fs.existsSync(dir)) return [];
++  const out: KnowledgePack[] = [];
++  for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort()) {
++    const s = parsePack(fs.readFileSync(path.join(dir, file), 'utf8'));
++    if (!s) continue;
++    const level = levelOf(s), status = statusOf(s), candidate = isCandidate(s);
++    out.push({
++      file, action: s.action, status, level, expected: s.expected, evidence: s.evidence,
++      intents: s.intents, failureModes: s.failureModes, candidate,
++      needsPrincipal: (status === 'verified' && candidate) || (status === 'conflicted' && level !== 'task'),
++    });
++  }
++  return out;
++}
++
+ export class CESynthesizer {
+   private store: ReceiptStore;
+   private knowledgeDir: string;
++  private projectRoot: string;
++  private authority: AuthorityLedger | 'unverified';
++  private rejected = new Map<string, string>();
+ 
+-  constructor(store: ReceiptStore, projectRoot: string = process.cwd()) {
++  /**
++   * `authority` is required. Knowledge is only as trustworthy as the authority
++   * behind the receipts it came from, so a synthesizer has to be handed the ledger
++   * that issued them. `'unverified'` is an explicit opt-out for demos and unit tests.
++   */
++  constructor(store: ReceiptStore, projectRoot: string = process.cwd(), authority?: AuthorityLedger | 'unverified') {
++    if (!authority) {
++      throw new Error('CESynthesizer needs an AuthorityLedger (or the explicit "unverified" opt-out): receipts must be traceable to issued authority.');
++    }
+     this.store = store;
++    this.authority = authority;
++    this.projectRoot = projectRoot;
+     this.knowledgeDir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
+     this.ensureDir();
+   }
+@@ -19,43 +157,228 @@ export class CESynthesizer {
+     }
+   }
+ 
++  /** Receipts that were refused, with the reason. */
++  getRejections(): { receiptId: string; reason: string }[] {
++    return [...this.rejected].map(([receiptId, reason]) => ({ receiptId, reason }));
++  }
++
+   /**
+-   * Scans receipts and synthesizes "Compound Packs" for successful patterns.
++   * Scans receipts and synthesizes knowledge packs for successful approaches.
++   * Only receipts backed by issued authority are considered, failures included:
++   * otherwise a forged failure could push good knowledge into conflict.
++   *
++   * A verified success promotes a pack. A later failure marks it conflicted, which
++   * withholds the recommendation without deleting the evidence; a newer verified
++   * success resolves the conflict, and only a principal can retire a pack.
++   * Recency, not a vote: a stale pack with many old successes must not outlive one fresh failure.
+    */
+   async synthesize(intentId: string): Promise<void> {
+     const receipts = this.store.getByIntent(intentId);
+     console.log(`[CE] Synthesizing knowledge from ${receipts.length} receipts...`);
+ 
+     for (const receipt of receipts) {
+-      if (receipt.delta === 'None' && receipt.actualOutcome.includes('success')) {
+-        this.promoteToKnowledge(receipt);
++      try {
++        const verdict = this.authenticate(receipt);
++        if (!verdict.ok) {
++          if (!this.rejected.has(receipt.id)) console.warn(`[CE] Rejected receipt ${receipt.id}: ${verdict.reason}`);
++          this.rejected.set(receipt.id, verdict.reason);
++          continue;
++        }
++        if (this.isVerifiedSuccess(receipt)) {
++          this.recordSupport(receipt, 'verified');
++        } else if (this.isContradiction(receipt)) {
++          this.recordSupport(receipt, 'contradicted');
++        }
++      } catch (e) {
++        console.warn(`[CE] Skipping receipt ${receipt.id}: ${e instanceof Error ? e.message : e}`);
+       }
+     }
+   }
+ 
+-  private promoteToKnowledge(receipt: Receipt): void {
+-    const packName = `lesson_${receipt.actionPerformed.toLowerCase().replace(/\s+/g, '_')}.md`;
+-    const filePath = path.join(this.knowledgeDir, packName);
++  private authenticate(r: Receipt): { ok: boolean; reason: string } {
++    if (this.authority === 'unverified') return { ok: true, reason: 'unverified mode' };
++    if (!this.store.verifyIntegrity(r.id)) return { ok: false, reason: 'receipt no longer matches what was recorded' };
++    return this.authority.admitReceipt(r);
++  }
++
++  private claimsSuccess(r: Receipt): boolean {
++    return POSITIVE_OUTCOME.test(r.actualOutcome) && !NEGATIVE_OUTCOME.test(r.actualOutcome);
++  }
++
++  private hasNoDelta(r: Receipt): boolean {
++    return r.delta.trim().toLowerCase() === 'none';
++  }
++
++  /** A claimed success only counts when it carries evidence (the "mirage" guard). */
++  private isVerifiedSuccess(r: Receipt): boolean {
++    return this.claimsSuccess(r) && this.hasNoDelta(r) && r.evidence.some(e => e.trim().length > 0);
++  }
++
++  /** A claimed success without evidence is unverified, not contradictory. */
++  private isContradiction(r: Receipt): boolean {
++    return !this.claimsSuccess(r) || !this.hasNoDelta(r);
++  }
++
++  private packPath(action: string): string {
++    const key = action.trim().replace(/\s+/g, ' ').toLowerCase();
++    const slug = key.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48) || 'action';
++    const hash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 8);
++    const filePath = path.join(this.knowledgeDir, `lesson_${slug}_${hash}.md`);
++    if (path.dirname(path.resolve(filePath)) !== path.resolve(this.knowledgeDir)) {
++      throw new Error(`pack path escapes knowledge dir: ${filePath}`);
++    }
++    return filePath;
++  }
++
++  private read(filePath: string): PackState | undefined {
++    return fs.existsSync(filePath) ? parsePack(fs.readFileSync(filePath, 'utf8')) : undefined;
++  }
++
++  private recordSupport(receipt: Receipt, kind: 'verified' | 'contradicted'): void {
++    const filePath = this.packPath(receipt.actionPerformed);
++    const existing = this.read(filePath);
+ 
+-    const content = `
+-# Knowledge Pack: ${receipt.actionPerformed}
+-**Proven Pattern**
++    // Failures only matter to actions we have already promoted.
++    if (kind === 'contradicted' && !existing) return;
++
++    const state: PackState = existing ?? {
++      action: flat(receipt.actionPerformed),
++      expected: flat(receipt.expectedOutcome),
++      evidence: flat(receipt.evidence.filter(e => e.trim()).join(', ')),
++      intent: flat(receipt.intentId),
++      actor: flat(receipt.actorId),
++      intents: [], principals: [], verified: [], contradicted: [], failureModes: [],
++      latest: kind, knowledgeApprovedBy: '', canonApprovedBy: '', retiredBy: '',
++    };
++
++    // Replaying a receipt already counted must not change the pack (idempotence).
++    const id = safeId(receipt.id);
++    if (state.verified.includes(id) || state.contradicted.includes(id)) return;
++    state[kind].push(id);
++    state.latest = kind;
++
++    if (kind === 'verified') {
++      const intent = flat(receipt.intentId);
++      if (!state.intents.includes(intent)) state.intents.push(intent);
++      const principal = this.authority === 'unverified' ? undefined : this.authority.lookup(receipt.authorizationId)?.intent.principalId;
++      if (principal && !state.principals.includes(principal)) state.principals.push(safeId(principal));
++    } else {
++      state.failureModes.push(flat(receipt.delta, 120));
++      state.failureModes = state.failureModes.slice(-3);
++    }
++
++    fs.writeFileSync(filePath, this.render(state));
++    console.log(`[CE] ${kind === 'verified' ? 'Promoted' : 'Contradicted'} lesson (${levelOf(state)}/${statusOf(state)}): ${path.basename(filePath)}`);
++  }
++
++  /** What is waiting on a principal right now. The engine cannot ask; it can make the question explicit. */
++  getEscalations(): { action: string; level: Level; kind: 'candidate' | 'conflict' }[] {
++    return loadKnowledge(this.projectRoot)
++      .filter(p => p.needsPrincipal)
++      .map(p => ({ action: p.action, level: p.level, kind: p.status === 'conflicted' ? 'conflict' as const : 'candidate' as const }));
++  }
++
++  /**
++   * Knowledge by principal approval. Reuse across distinct tasks only makes a candidate;
++   * promotion is never automatic and never self-awarded. Only a principal of an intent
++   * that verified the pack may approve it.
++   */
++  approveKnowledge(action: string, principalId: string): void {
++    const { filePath, state } = this.forPrincipal(action, principalId);
++    if (statusOf(state) !== 'verified') throw new Error(`Cannot promote a ${statusOf(state)} lesson to Knowledge.`);
++    if (levelOf(state) !== 'task') throw new Error(`Already ${levelOf(state)}.`);
++    if (!isCandidate(state)) throw new Error('Knowledge needs reuse across more than one task: this lesson is verified in a single intent.');
++    state.knowledgeApprovedBy = safeId(principalId);
++    fs.writeFileSync(filePath, this.render(state));
++  }
++
++  /** Canon by principal approval, through the gate, and only from Knowledge. Never by volume of reuse. */
++  approveCanon(action: string, principalId: string): void {
++    const { filePath, state } = this.forPrincipal(action, principalId);
++    if (statusOf(state) !== 'verified') throw new Error(`Cannot make a ${statusOf(state)} pack canon.`);
++    if (levelOf(state) !== 'knowledge') throw new Error('Canon must first be Knowledge: it is earned rung by rung, never skipped.');
++    state.canonApprovedBy = safeId(principalId);
++    fs.writeFileSync(filePath, this.render(state));
++  }
++
++  /** Withdraw a pack. Final: later successes do not revive a retired pack. */
++  retire(action: string, principalId: string): void {
++    const { filePath, state } = this.forPrincipal(action, principalId);
++    state.retiredBy = safeId(principalId);
++    fs.writeFileSync(filePath, this.render(state));
++  }
++
++  private forPrincipal(action: string, principalId: string): { filePath: string; state: PackState } {
++    if (this.authority === 'unverified') throw new Error('Principal decisions need an authority ledger to identify principals.');
++    const filePath = this.packPath(action);
++    const state = this.read(filePath);
++    if (!state) throw new Error(`No knowledge pack for "${action}".`);
++    if (!state.principals.includes(safeId(principalId))) {
++      throw new Error(`${principalId} is not a principal of any intent that verified "${action}".`);
++    }
++    return { filePath, state };
++  }
++
++  private headline(s: PackState): string {
++    const status = statusOf(s), level = levelOf(s), n = s.intents.length;
++    if (status === 'retired') return `RETIRED by ${s.retiredBy}. Do not apply.`;
++    if (status === 'conflicted') {
++      return `CONFLICTED: a newer receipt contradicts this ${level}. Do not apply until re-verified${level === 'task' ? '' : ' or resolved by the principal'}.`;
++    }
++    if (level === 'canon') return `Canon: approved by ${s.canonApprovedBy} through the gate.`;
++    if (level === 'knowledge') return `Knowledge: approved by ${s.knowledgeApprovedBy}; verified across ${n} distinct intents.`;
++    if (isCandidate(s)) return `Candidate: verified across ${n} distinct intents. Not yet Knowledge: promotion is never automatic, and a principal must approve it.`;
++    return 'Task-level lesson: verified in 1 intent. Reuse across tasks is not confirmed yet; try it, and verify.';
++  }
++
++  private render(s: PackState): string {
++    const status = statusOf(s), level = levelOf(s);
++    const failures = s.failureModes.length
++      ? s.failureModes.map(f => `a later attempt failed with: ${f}`).join('; ')
++      : 'no failure observed yet (absence of failure is not proof)';
++    return `---
++status: ${status}
++level: ${level}
++action: ${s.action}
++expected: ${s.expected}
++evidence: ${s.evidence}
++intent: ${s.intent}
++actor: ${s.actor}
++intents: ${s.intents.join(',')}
++principals: ${s.principals.join(',')}
++verified: ${s.verified.join(',')}
++contradicted: ${s.contradicted.join(',')}
++failure_modes: ${s.failureModes.join(' | ')}
++latest: ${s.latest}
++knowledge_approved_by: ${s.knowledgeApprovedBy}
++canon_approved_by: ${s.canonApprovedBy}
++retired_by: ${s.retiredBy}
++---
++# Knowledge Pack: ${s.action}
++**${this.headline(s)}**
+ 
+ ## Context
+-- Intent: ${receipt.intentId}
+-- Actor: ${receipt.actorId}
++- Intent: ${s.intent}
++- Actor: ${s.actor}
+ 
+ ## Verified Action
+-${receipt.actionPerformed}
++${s.action}
++
++## Expected Outcome
++${s.expected}
+ 
+ ## Evidence of Success
+-${receipt.evidence.join(', ')}
++${s.evidence}
+ 
+-## Why it worked
+-The action resulted in a zero-delta outcome. This pattern is now recommended for similar tasks.
+-    `.trim();
++## Reuse guidance
++- Confidence: ${level}${isCandidate(s) ? ' (candidate for Knowledge, awaiting a principal)' : ''}, verified in ${s.intents.length} distinct intent(s): ${s.intents.join(', ') || 'none'}.
++- Apply when: the verification plan matches "${s.expected}".
++- Do NOT apply when: ${failures}; or the context differs from the intents above, unless you re-verify.
++- Limits: the evidence above was checked in those intents only.
+ 
+-    fs.writeFileSync(filePath, content);
+-    console.log(`[CE] Promoted successful pattern to: ${packName}`);
++## Provenance
++- Verified by receipts: ${s.verified.join(', ') || 'none'}
++- Contradicted by receipts: ${s.contradicted.join(', ') || 'none'}
++`;
+   }
+ }
+diff --git a/plugins/uigates/intelligence/loop/driver.ts b/plugins/uigates/intelligence/loop/driver.ts
+index 5bbd06e..afbbc73 100644
+--- a/plugins/uigates/intelligence/loop/driver.ts
++++ b/plugins/uigates/intelligence/loop/driver.ts
+@@ -9,7 +9,7 @@ import { Intent } from '../../core/types/primitives';
+  * Mock Worker Engine for the Ralph Loop
+  */
+ class RalphWorker implements IntelligenceEngine {
+-  async proposeAction(intent: Intent) {
++  async proposeAction(intent: Intent): Promise<never> {
+     throw new Error('RalphWorker does not propose; it executes tasks from FIX_PLAN.md');
+   }
+ 
+@@ -52,7 +52,8 @@ export class LoopDriver {
+       console.log(`\n--- Next Task: ${task.id} ---`);
+ 
+       // 1. Propose via AIDD
+-      const proposal = await aidd.createProposalForTask(intent, task);
++      // The worker that executes is the actor the authorization is issued to.
++      const proposal = { ...(await aidd.createProposalForTask(intent, task)), actorId: 'ralph-worker' };
+ 
+       // 2. Authorize via Governance
+       const evalResult = this.govEngine.evaluate(proposal, intent);
+@@ -81,7 +82,7 @@ export class LoopDriver {
+ 
+           // Record the receipt
+           this.receiptStore.record({
+-            id: `rec_${Date.now()}`,
++            id: `rec_${task.id}_${Date.now()}`,
+             authorizationId: auth.id,
+             intentId: intent.id,
+             actorId: 'ralph-worker',
