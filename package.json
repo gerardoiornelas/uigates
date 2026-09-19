@@ -1,0 +1,29 @@
+{
+  "name": "uigates",
+  "version": "0.1.0",
+  "description": "UI-GATES: authority-aware learning for AI coding agents. Reference engine, `uig` CLI and evidence-backed learning harness.",
+  "private": true,
+  "author": "Gerardo I. Ornelas",
+  "repository": "github:gerardoiornelas/uigates",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "uig": "bin/uig.mjs"
+  },
+  "scripts": {
+    "uig": "node bin/uig.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:learning && npm run test:core && npm run test:workboard",
+    "test:learning": "node --test plugins/uigates/learning/learning.test.mjs",
+    "test:workboard": "node --test \"examples/workboard/test/*.test.mjs\"",
+    "test:core": "tsx --test plugins/uigates/core/promises_test.ts plugins/uigates/core/synthesis_pressure_test.ts plugins/uigates/core/arcade_pressure_test.ts plugins/uigates/core/compounding_test.ts plugins/uigates/core/game_dev_test.ts plugins/uigates/core/pressure_tests.ts plugins/uigates/core/test_protection.ts plugins/uigates/core/skills_sync_test.ts plugins/uigates/core/learning_regression_test.ts plugins/uigates/cli/cli_test.ts"
+  },
+  "dependencies": {
+    "tsx": "4.23.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

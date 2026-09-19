@@ -21,6 +21,18 @@ Reasoning proposes. Authority decides. Verified work synthesizes into reusable k
 6. Execute and verify. After each step, record Expected/Actual/Delta. Do not claim success without evidence, and do not retry on a delta without first returning to planning to address its root cause.
 7. Record a task receipt and promote only warranted learning: Ephemeral → Task → Decision → Knowledge → Canon. Each durable artifact must retain provenance to its source and evidence.
 
+## Recording with the engine
+
+If the UI-GATES engine CLI is installed (`npx uig help` succeeds), record the workflow through it instead of prose. State lives in `.uig/`; each call is a separate process and the engine rebuilds its authority ledger from those records.
+
+1. `uig start "<goal>" --domain <path> --success <evidence>` bounds the intent (principal, delegated domain, expiry).
+2. `uig propose <intentId> --action … --resource … --impact low|medium|high --rationale … --risk … --verify …` returns **delegated**, **gated**, or **DENIED**. Stop on denied.
+3. `uig authorize <proposalId>` issues delegated authority. For a gated action, ask the principal first; pass `--approved-by <principal>` only after their explicit yes in conversation. Never approve your own gated action.
+4. Do the work, then `uig receipt <authorizationId> --run "<verification command>"`. The CLI runs the command and hashes its output as evidence; you do not assert the result. A non-zero exit is a delta: return to planning and retry only with `--replan-after <receiptId> --root-cause … --revision …`.
+5. `uig synthesize <intentId>`, then `uig knowledge`. Lessons start at Task level; reuse across distinct intents makes a candidate. `uig approve` and `uig retire` are the principal's decisions, never yours.
+
+Without the engine, record the same fields in markdown and say in the completion report that synthesis was not engine-verified.
+
 ## Stop conditions
 
 Stop and ask the principal when an action is gated or prohibited, material constraints are unknown, authoritative knowledge conflicts, or required verification fails or cannot run.
