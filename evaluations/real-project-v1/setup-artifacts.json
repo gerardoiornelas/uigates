@@ -1,0 +1,18 @@
+[
+  {
+    "file": "smoke.jsonl",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "smoke-clean.jsonl",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "smoke-authorized.jsonl",
+    "sha256": "d95ac1e704e68399a3890fa5ff204e0b9b18b55db756c20ad6831a051cc5326e"
+  },
+  {
+    "file": "smoke-current.jsonl",
+    "sha256": "95cc217321ea6a7bfca4b903007b9a26aa579dfa35844526d6e645869e5e7096"
+  }
+]

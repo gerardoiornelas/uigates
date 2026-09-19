@@ -111,7 +111,7 @@ function newWorld(root = tmpRoot(), audit = false): World {
   const store = new ReceiptStore();
   fs.mkdirSync(root, { recursive: true });
   const ledger = new AuthorityLedger();
-  return { root, store, ledger, synth: new CESynthesizer(store, root, ledger), audit: audit ? new StateStore(root) : undefined };
+  return { root, store, ledger, synth: new CESynthesizer(store, root, ledger, { evidenceVerifier: r => r.evidence.some(e => e.trim().length > 0) }), audit: audit ? new StateStore(root) : undefined };
 }
 
 interface BuildResult {
@@ -396,9 +396,10 @@ async function scenarios() {
     const gov = new GovernanceEngine();
     let firstGate = -1;
     for (let i = 1; i <= 20; i++) {
-      const ev = gov.evaluate(proposalFor('games/breakout/game.js', 'low', i), baseIntent());
+      const proposal = proposalFor('games/breakout/game.js', 'low', i);
+      const ev = gov.evaluate(proposal, baseIntent());
       if (ev.suggestedState === 'gated' && firstGate < 0) firstGate = i;
-      gov.authorize(proposalFor('games/breakout/game.js', 'low', i), 'principal', ev.suggestedState);
+      gov.authorize(proposal, 'principal', ev.suggestedState);
     }
     check('G3 salami: repeated low-impact edits escalate to gated', firstGate > 0 && firstGate <= 16, `first gated at edit #${firstGate}`);
   }

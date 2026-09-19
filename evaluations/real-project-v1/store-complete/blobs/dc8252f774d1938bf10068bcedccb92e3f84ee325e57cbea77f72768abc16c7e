@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/priority.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/priority.mjs exporting run(board,{id,priority}). Require priority 1,2 or 3; update one nonarchived item and increment revision only if changed. Return detached item. Same priority is a no-op. Invalid input, missing or archived item throws without mutation. Follow transaction/audit conventions.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

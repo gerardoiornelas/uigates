@@ -1,0 +1,6 @@
+PASS query does not mutate
+PASS case insensitive
+PASS empty result
+PASS invalid query
+PASS detached
+5 independent behavioral checks passed for search

@@ -1,0 +1,5 @@
+PASS query does not mutate
+PASS date range and states
+PASS strict date
+PASS detached
+4 independent behavioral checks passed for overdue

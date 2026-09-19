@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/list.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/list.mjs exporting run(board,input={}). Return detached records sorted by numeric id, excluding archived records unless input.state is archived. Optional state must be open, done, archived or all; all includes everything. Optional label must be a string and is trimmed/lowercased for exact label matching. Invalid filters throw. Do not mutate the board.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

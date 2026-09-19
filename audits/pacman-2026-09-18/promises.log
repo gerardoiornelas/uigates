@@ -1,0 +1,74 @@
+
+=== A. AUTHORITY: "is this actor authorized, on this resource, under this intent, right now?" ===
+
+  PASS  A0 control: an in-domain, low-impact action by a listed principal is delegated  — delegated
+  PASS  A1 an expired intent grants nothing  — Intent i1 has expired; it grants no authority.
+  PASS  A2 an intent that expires between evaluation and authorization cannot be authorized  — Cannot authorize p3: intent i1 has expired.
+  PASS  A3 a receipt produced after its authorization expired is refused  — receipt was produced after the authorization expired
+  PASS  A3b a receipt that predates its authorization is refused  — receipt predates its authorization
+  PASS  A4 an intent that names its actors excludes everyone else (and still admits the named one)  — agent-a=delegated, agent-b=prohibited
+  PASS  A5 authority issued to one actor cannot be used by another  — authorization was issued to "agent-a", not "agent-b"
+  PASS  A6 authority and audit records are prohibited, even under a wide domain and via path tricks  — prohibited,prohibited,prohibited,prohibited,prohibited,prohibited
+  PASS  A6b knowledge cannot be hand-edited without a principal decision (gated)  — gated
+  PASS  A6c control: ordinary source under the same wide domain is still delegated  — delegated
+  PASS  A7 a proposal that was never evaluated cannot be authorized  — Cannot authorize unseen: it was never evaluated by this engine.
+  PASS  A7b a denied proposal cannot be authorized, whatever state is asked for  — Cannot authorize p17: denied (Resource ../../etc/passwd is outside the authorized domain.)
+  PASS  A7c only the intent's principal can grant authority  — Cannot authorize p18: only the intent's principal (bob) can grant authority, not random-person.
+  PASS  A7d a gated proposal cannot be quietly authorized as delegated  — Cannot authorize p19 as delegated: evaluation resolved to gated.
+  PASS  A7e authority cannot be minted for a different proposal than the one evaluated  — Cannot authorize p20: it differs from the proposal that was evaluated.
+  PASS  A7f control: the honest path yields an authorization bound to actor, intent, action, resource and expiry
+  PASS  A8 authority covers only the action it was issued for  — authorization covers "refactor", not "deploy to prod"
+  PASS  A8b authority covers only the intent it was issued under  — authorization belongs to intent "i1", not "someone-elses-intent"
+  PASS  A8c control: the matching receipt is admitted, and re-admitting it is idempotent
+  PASS  A8d one authorization cannot be spent on a second receipt  — authorization already spent on receipt "r4"
+
+=== B. RECEIPTS: "an immutable record of an authorized execution and its outcome" ===
+
+  PASS  B1 re-recording an id with different content is refused  — Receipt r1 already exists with different content; receipts are immutable.
+  PASS  B1b control: re-recording identical content is a harmless no-op
+  PASS  B2 a stored receipt cannot be edited through the reference handed out
+  PASS  B2b editing the object you passed in does not change what was recorded
+  PASS  B3 control: an untouched receipt passes its integrity check
+  PASS  B3b in-place tampering that freezing cannot stop (a Date) is detected
+  PASS  B4 control: saving the same receipt twice is fine
+  PASS  B4b an on-disk receipt cannot be rewritten
+  PASS  B4c an on-disk authorization cannot be rewritten (no self-extension of authority)
+
+=== C. KNOWLEDGE: "verified work synthesizes into reusable knowledge", earned, not assumed ===
+
+  PASS  C0 a synthesizer without an authority source refuses to exist (fail closed)  — CESynthesizer needs an AuthorityLedger (or the explicit "unverified" opt-out): receipts must be traceable to issued authority.
+  PASS  C0b the opt-out is explicit, never the default
+  PASS  C1 a receipt citing an authorization nobody issued becomes no knowledge, and the refusal is on record  — packs=[Use HMAC for sessions] rejections=["authorization \"auth_DOES_NOT_EXIST\" was never issued"]
+  PASS  C1b control: the genuinely authorized receipt was promoted
+  PASS  C2 a forged failure cannot conflict out good knowledge  — verified
+  PASS  C2b a receipt altered after recording is refused
+  PASS  C3 one verified success earns Task, not Knowledge, and is not yet a candidate  — task
+  PASS  C3b repeating it inside the same task does not make it reusable across tasks  — task, 1 intent(s)
+  PASS  C3c verified in a second, distinct intent it becomes a candidate, and stays Task until a principal decides  — task, candidate=true
+  PASS  C3d the open question is explicit: the candidate is listed as awaiting a principal  — [{"action":"Validate sessions server-side","level":"task","kind":"candidate"}]
+  PASS  C3e no amount of confirmed reuse promotes it by itself (8 distinct intents, still Task)  — task, 8 intents
+  PASS  C3f a principal of the verifying intents promotes it to Knowledge; a stranger cannot  — stranger="mallory is not a principal of any intent that verified "Validate sessions server-side"." level=knowledge
+  PASS  C4 Knowledge needs a second task, Canon cannot skip Knowledge, and only a principal can grant Canon  — single="Knowledge needs reuse across more than one task: this lesson is verified in a single intent." skip="Canon must first be Knowledge: it is earned rung by rung, never skipped." level=canon
+  PASS  C4b a lesson that is currently contradicted cannot be promoted  — Cannot promote a conflicted lesson to Knowledge.
+  PASS  C5 every pack states when to apply, when NOT to, and its limits
+  PASS  C5b an observed failure becomes a recorded "do not apply" condition
+  PASS  C6 a contradiction withholds the recommendation but keeps the evidence, and flags that a principal should look  — conflicted, needsPrincipal=true
+  PASS  C6b newer verified evidence resolves the conflict  — verified
+  PASS  C6c only a principal can retire a pack, and retirement is final  — mallory is not a principal of any intent that verified "Shard by tenant". / retired
+  PASS  C7 synthesizing the same receipts again changes nothing (no self-inflicted rejections either)
+
+=== D. EXECUTE: "do not retry on a delta without first returning to planning" ===
+
+  PASS  D0 control: the first attempt at a task needs no replan  — delegated
+  PASS  D1 a retry after a delta is refused unless it carries a replan  — Task T1 ended with a delta ("Off-by-one", receipt r34). Return to planning: a re
+  PASS  D2 a replan must cite the receipt that actually failed
+  PASS  D3 a replan must state a root cause and a revision (blank and placeholder text do not count)
+  PASS  D4 control: a retry that carries a proper replan is evaluated like any other proposal  — delegated
+  PASS  D4b the replan is bound to the authorization: it cannot be dropped between evaluation and authorize  — Cannot authorize p56: it differs from the proposal that was evaluated.
+  PASS  D5 once the task has succeeded the delta is cleared and no replan is needed  — Low impact action within domain.
+  PASS  D6 only the failed task is held: other tasks proceed
+  PASS  D6b a proposal with no task identity is never treated as a retry (the rule needs taskId)
+  PASS  D7 a failure under one intent does not gate the same task id under another
+  PASS  D8 stated limit: an engine that is not given the receipt store cannot apply the rule  — rule is opt-in via the third constructor argument
+
+=== SUMMARY: 60/60 promises kept ===

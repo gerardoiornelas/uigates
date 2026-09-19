@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/remove.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/remove.mjs exporting run(board,{id}). Remove only an archived item and return its detached record. Missing, invalid, open or done item throws with atomic rollback. Preserve nextId so IDs are never reused. Follow transaction/audit conventions.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

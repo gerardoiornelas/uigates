@@ -1,0 +1,8 @@
+PASS query does not mutate
+PASS default excludes archive
+PASS state filter
+PASS normalized label
+PASS all includes archive
+PASS bad filters
+PASS detached results
+7 independent behavioral checks passed for list

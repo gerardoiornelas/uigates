@@ -37,7 +37,8 @@ export class UIGatesWrapper {
   constructor(
     private engine: IntelligenceEngine,
     private govEngine: GovernanceEngine,
-    private receiptStore: ReceiptStore
+    private receiptStore: ReceiptStore,
+    private approveGated?: (proposal: Proposal, principalId: string) => Promise<boolean>
   ) {}
 
   /**
@@ -47,7 +48,8 @@ export class UIGatesWrapper {
     console.log(`[UI-GATES] Starting task for Intent: ${intent.goal}`);
 
     let taskComplete = false;
-    while (!taskComplete) {
+    let attempts = 0;
+    while (!taskComplete && attempts++ < 20) {
       // 1. Intelligence Layer: Propose an action
       const proposal = await this.engine.proposeAction(intent);
 
@@ -61,9 +63,9 @@ export class UIGatesWrapper {
       }
 
       if (evaluation.suggestedState === 'gated') {
-        console.log(`[UI-GATES] Action GATED. Requesting Principal authorization...`);
-        // Simulation: In a real tool, this would pause for human input
-        console.log(`[Principal] Authorizing ${proposal.action} as ${evaluation.suggestedState}...`);
+        if (!this.approveGated || !(await this.approveGated(proposal, principalId))) {
+          throw new Error(`Principal approval required for gated action: ${proposal.action}`);
+        }
       }
 
       const auth = this.govEngine.authorize(proposal, principalId, evaluation.suggestedState);
@@ -84,6 +86,7 @@ export class UIGatesWrapper {
         delta: result.delta,
         evidence: result.evidence,
         verifiedAt: new Date(),
+        taskId: proposal.taskId,
       };
 
       this.receiptStore.record(receipt);
@@ -98,6 +101,7 @@ export class UIGatesWrapper {
       }
     }
 
+    if (!taskComplete) throw new Error(`Intent not complete: ${intent.goal}. Replan before continuing.`);
     console.log(`[UI-GATES] Task complete for Intent: ${intent.goal}`);
   }
 }

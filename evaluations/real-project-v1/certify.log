@@ -1,0 +1,698 @@
+{
+  "body": {
+    "id": "workboard-v1",
+    "planSha256": "f7c44aff759290f65fa5c2bf2b2024fd87507b12da796685e43d8793affb6b22",
+    "scope": {
+      "projects": [
+        "workboard"
+      ],
+      "families": [
+        "query",
+        "reporting",
+        "metadata",
+        "workflow"
+      ],
+      "model": "gpt-6-astra",
+      "reasoningEffort": "high",
+      "costScope": "Operational discovery, synthesis, selection, agent execution, deterministic verification and observed maintenance for this learning cycle. Excludes one-time framework/project/benchmark design and parent-session implementation tokens; no billing claim."
+    },
+    "lessonIds": [
+      "lesson-1079c5e5daca0992da2b"
+    ],
+    "pairs": [
+      {
+        "task": "list",
+        "project": "workboard",
+        "family": "query",
+        "control": {
+          "id": "workboard-v1.list.control",
+          "quality": true,
+          "usage": {
+            "complete": true,
+            "input": 72879,
+            "output": 1257,
+            "cached": 63488,
+            "total": 74136,
+            "turns": 1
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.list.treatment",
+          "quality": true,
+          "usage": {
+            "complete": true,
+            "input": 95125,
+            "output": 1641,
+            "cached": 84864,
+            "total": 96766,
+            "turns": 1
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": -22630
+      },
+      {
+        "task": "search",
+        "project": "workboard",
+        "family": "query",
+        "control": {
+          "id": "workboard-v1.search.control",
+          "quality": true,
+          "usage": {
+            "complete": true,
+            "input": 91979,
+            "output": 1142,
+            "cached": 82560,
+            "total": 93121,
+            "turns": 1
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.search.treatment",
+          "quality": true,
+          "usage": {
+            "complete": true,
+            "input": 74269,
+            "output": 995,
+            "cached": 59264,
+            "total": 75264,
+            "turns": 1
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": 17857
+      },
+      {
+        "task": "overdue",
+        "project": "workboard",
+        "family": "query",
+        "control": {
+          "id": "workboard-v1.overdue.control",
+          "quality": true,
+          "usage": {
+            "complete": true,
+            "input": 72333,
+            "output": 1209,
+            "cached": 63232,
+            "total": 73542,
+            "turns": 1
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.overdue.treatment",
+          "quality": true,
+          "usage": {
+            "complete": true,
+            "input": 93060,
+            "output": 1274,
+            "cached": 75776,
+            "total": 94334,
+            "turns": 1
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": -20792
+      },
+      {
+        "task": "due-soon",
+        "project": "workboard",
+        "family": "query",
+        "control": {
+          "id": "workboard-v1.due-soon.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.due-soon.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "summary",
+        "project": "workboard",
+        "family": "reporting",
+        "control": {
+          "id": "workboard-v1.summary.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.summary.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "by-label",
+        "project": "workboard",
+        "family": "reporting",
+        "control": {
+          "id": "workboard-v1.by-label.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.by-label.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "csv",
+        "project": "workboard",
+        "family": "reporting",
+        "control": {
+          "id": "workboard-v1.csv.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.csv.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "markdown",
+        "project": "workboard",
+        "family": "reporting",
+        "control": {
+          "id": "workboard-v1.markdown.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.markdown.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "rename",
+        "project": "workboard",
+        "family": "metadata",
+        "control": {
+          "id": "workboard-v1.rename.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.rename.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "priority",
+        "project": "workboard",
+        "family": "metadata",
+        "control": {
+          "id": "workboard-v1.priority.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.priority.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "label",
+        "project": "workboard",
+        "family": "metadata",
+        "control": {
+          "id": "workboard-v1.label.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.label.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "schedule",
+        "project": "workboard",
+        "family": "metadata",
+        "control": {
+          "id": "workboard-v1.schedule.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.schedule.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "reopen",
+        "project": "workboard",
+        "family": "workflow",
+        "control": {
+          "id": "workboard-v1.reopen.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.reopen.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "archive",
+        "project": "workboard",
+        "family": "workflow",
+        "control": {
+          "id": "workboard-v1.archive.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.archive.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "remove",
+        "project": "workboard",
+        "family": "workflow",
+        "control": {
+          "id": "workboard-v1.remove.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.remove.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      },
+      {
+        "task": "batch-complete",
+        "project": "workboard",
+        "family": "workflow",
+        "control": {
+          "id": "workboard-v1.batch-complete.control",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": []
+        },
+        "treatment": {
+          "id": "workboard-v1.batch-complete.treatment",
+          "quality": false,
+          "usage": {
+            "complete": false,
+            "input": null,
+            "output": null,
+            "cached": null,
+            "total": null,
+            "reason": "Runner failed or timed out"
+          },
+          "supplied": [
+            "lesson-1079c5e5daca0992da2b"
+          ]
+        },
+        "saved": null
+      }
+    ],
+    "complete": false,
+    "quality": false,
+    "learningSupported": false,
+    "tokenSavingsSupported": false,
+    "certified": false,
+    "familyResults": [
+      {
+        "family": "query",
+        "pairs": 4,
+        "accepted": 3,
+        "acceptance95CI": [
+          0.3006360524426366,
+          0.9544139373553637
+        ],
+        "grossTokensSaved": null
+      },
+      {
+        "family": "reporting",
+        "pairs": 4,
+        "accepted": 0,
+        "acceptance95CI": [
+          0,
+          0.48990002040399916
+        ],
+        "grossTokensSaved": null
+      },
+      {
+        "family": "metadata",
+        "pairs": 4,
+        "accepted": 0,
+        "acceptance95CI": [
+          0,
+          0.48990002040399916
+        ],
+        "grossTokensSaved": null
+      },
+      {
+        "family": "workflow",
+        "pairs": 4,
+        "accepted": 0,
+        "acceptance95CI": [
+          0,
+          0.48990002040399916
+        ],
+        "grossTokensSaved": null
+      }
+    ],
+    "unboundedGeneralLearningCertified": false,
+    "status": "inconclusive-or-not-supported",
+    "controlTokens": null,
+    "treatmentTokens": null,
+    "observedOverheadTokens": 237028,
+    "overheadComplete": true,
+    "netTokensSaved": null,
+    "grossSavings95CI": [
+      null,
+      null
+    ],
+    "netSavings95CI": [
+      null,
+      null
+    ],
+    "acceptance95CI": [
+      0.06591478773586765,
+      0.4300935986845823
+    ],
+    "reasons": [
+      "Incomplete telemetry: workboard-v1.due-soon.control",
+      "Acceptance failed: workboard-v1.due-soon.control",
+      "Incomplete telemetry: workboard-v1.due-soon.treatment",
+      "Acceptance failed: workboard-v1.due-soon.treatment",
+      "Incomplete telemetry: workboard-v1.summary.control",
+      "Acceptance failed: workboard-v1.summary.control",
+      "Incomplete telemetry: workboard-v1.summary.treatment",
+      "Acceptance failed: workboard-v1.summary.treatment",
+      "Incomplete telemetry: workboard-v1.by-label.control",
+      "Acceptance failed: workboard-v1.by-label.control",
+      "Incomplete telemetry: workboard-v1.by-label.treatment",
+      "Acceptance failed: workboard-v1.by-label.treatment",
+      "Incomplete telemetry: workboard-v1.csv.control",
+      "Acceptance failed: workboard-v1.csv.control",
+      "Incomplete telemetry: workboard-v1.csv.treatment",
+      "Acceptance failed: workboard-v1.csv.treatment",
+      "Incomplete telemetry: workboard-v1.markdown.control",
+      "Acceptance failed: workboard-v1.markdown.control",
+      "Incomplete telemetry: workboard-v1.markdown.treatment",
+      "Acceptance failed: workboard-v1.markdown.treatment",
+      "Incomplete telemetry: workboard-v1.rename.control",
+      "Acceptance failed: workboard-v1.rename.control",
+      "Incomplete telemetry: workboard-v1.rename.treatment",
+      "Acceptance failed: workboard-v1.rename.treatment",
+      "Incomplete telemetry: workboard-v1.priority.control",
+      "Acceptance failed: workboard-v1.priority.control",
+      "Incomplete telemetry: workboard-v1.priority.treatment",
+      "Acceptance failed: workboard-v1.priority.treatment",
+      "Incomplete telemetry: workboard-v1.label.control",
+      "Acceptance failed: workboard-v1.label.control",
+      "Incomplete telemetry: workboard-v1.label.treatment",
+      "Acceptance failed: workboard-v1.label.treatment",
+      "Incomplete telemetry: workboard-v1.schedule.control",
+      "Acceptance failed: workboard-v1.schedule.control",
+      "Incomplete telemetry: workboard-v1.schedule.treatment",
+      "Acceptance failed: workboard-v1.schedule.treatment",
+      "Incomplete telemetry: workboard-v1.reopen.control",
+      "Acceptance failed: workboard-v1.reopen.control",
+      "Incomplete telemetry: workboard-v1.reopen.treatment",
+      "Acceptance failed: workboard-v1.reopen.treatment",
+      "Incomplete telemetry: workboard-v1.archive.control",
+      "Acceptance failed: workboard-v1.archive.control",
+      "Incomplete telemetry: workboard-v1.archive.treatment",
+      "Acceptance failed: workboard-v1.archive.treatment",
+      "Incomplete telemetry: workboard-v1.remove.control",
+      "Acceptance failed: workboard-v1.remove.control",
+      "Incomplete telemetry: workboard-v1.remove.treatment",
+      "Acceptance failed: workboard-v1.remove.treatment",
+      "Incomplete telemetry: workboard-v1.batch-complete.control",
+      "Acceptance failed: workboard-v1.batch-complete.control",
+      "Incomplete telemetry: workboard-v1.batch-complete.treatment",
+      "Acceptance failed: workboard-v1.batch-complete.treatment"
+    ],
+    "limitations": [
+      "A local evidence attestation, not third-party accreditation.",
+      "Bootstrap assumes the declared task sample; correlated tasks and one project limit external validity.",
+      "No claim about billing: cached-input tokens are included once in total input.",
+      "One-time framework and benchmark development is outside the declared operational cost scope.",
+      "Future tasks, other repositories and other models require their own evidence."
+    ],
+    "createdAt": "2026-09-19T00:41:10.611Z"
+  },
+  "sha256": "6f70cdc1a712b68f1cf8cecbdb5c9ce7670d80171b6d14ae9e87a35a597793d6"
+}

@@ -155,8 +155,9 @@ async function partA() {
   // "lesson_.." segment is not a directory); 'a/../../../x' normalizes lexically.
   for (const payload of ['../../escaped', 'a/../../../escaped', 'a/../../../../../escaped']) {
     const { root, error } = await world([rec({ actionPerformed: payload })]);
-    const escaped = walk(path.dirname(root)).filter(f => !f.startsWith(packsDir(root) + path.sep));
-    check(`A4 traversal payload "${payload}" cannot write outside packs dir`, escaped.length === 0,
+    const stateDir = path.join(root, '.uig', 'knowledge', 'pack_state');
+    const escaped = walk(path.dirname(root)).filter(f => !f.startsWith(packsDir(root) + path.sep) && !f.startsWith(stateDir + path.sep));
+    check(`A4 traversal payload "${payload}" cannot write outside knowledge storage`, escaped.length === 0,
       escaped.length ? `escaped: ${escaped.map(f => path.relative(path.dirname(root), f)).join(', ')}` : error ? `threw: ${error.slice(0, 60)}` : '');
   }
 

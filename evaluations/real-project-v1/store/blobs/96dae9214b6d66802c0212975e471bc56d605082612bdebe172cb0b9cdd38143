@@ -1,0 +1,21 @@
+import { view } from '../domain/board.mjs';
+import { plainObject, STATES } from '../domain/records.mjs';
+
+export function run(board, input = {}) {
+  if (!plainObject(input)) throw Error('input must be an object');
+  const { state, label } = input;
+  if (state !== undefined && state !== 'all' && !STATES.includes(state)) {
+    throw Error('invalid state');
+  }
+  if (label !== undefined && typeof label !== 'string') {
+    throw Error('label must be a string');
+  }
+  const normalizedLabel = label === undefined ? undefined : label.trim().toLowerCase();
+
+  return view(board)
+    .filter(record => state === 'all' || (state === undefined
+      ? record.state !== 'archived'
+      : record.state === state))
+    .filter(record => normalizedLabel === undefined || record.labels.includes(normalizedLabel))
+    .sort((a, b) => a.id - b.id);
+}

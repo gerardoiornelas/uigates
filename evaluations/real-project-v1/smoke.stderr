@@ -1,0 +1,2 @@
+WARNING: proceeding, even though we could not create PATH aliases: Operation not permitted (os error 1)
+Error: failed to parse model_catalog_json path `/Users/jenniferornelas/.codex/ollama-launch-models.json` as JSON: missing field `supports_parallel_tool_calls` at line 414 column 5

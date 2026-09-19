@@ -55,6 +55,7 @@ export class AuthorityLedger {
     if (a.action !== r.actionPerformed) return no(`authorization covers "${a.action}", not "${r.actionPerformed}"`);
 
     const at = new Date(r.verifiedAt).getTime();
+    if (![at, new Date(a.authorizedAt).getTime(), ...(a.expiry ? [new Date(a.expiry).getTime()] : [])].every(Number.isFinite)) return no('invalid authority or receipt timestamp');
     if (at < new Date(a.authorizedAt).getTime()) return no('receipt predates its authorization');
     if (a.expiry && at > new Date(a.expiry).getTime()) return no('receipt was produced after the authorization expired');
 

@@ -2,3 +2,8 @@
 graphify-out/
 .graphify_analysis.json
 .graphify_labels.json
+
+# UI-GATES local runtime evidence
+.uig/
+examples/arcade/.uig/
+.claude/launch.json

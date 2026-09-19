@@ -1,0 +1,13 @@
+{
+  "body": {
+    "hashes": {
+      "evidence.mjs": "ea4afce0e11c30f532bd6f48d297e9272b8f87718fa779231266cf2c3b4ae88a",
+      "memory.mjs": "beb648861f961d5c9358a7e867dd6bdad003d70d6743f773fe9299a068ab4743",
+      "runner.mjs": "9369a22b0dd4181fcb2b6bd7109e7bc792229fb956cf932e0fd31851a7b549e1",
+      "certify.mjs": "4f76fee4611cf5f89d0fc6b928d071017514b55ac00fd84dc38e8c8f20ac05b0"
+    },
+    "cliVersion": "codex-cli 0.155.1",
+    "planSha256": "f7c44aff759290f65fa5c2bf2b2024fd87507b12da796685e43d8793affb6b22"
+  },
+  "sha256": "93b0b0efdef41b42ac77a1f2e904f69bd3831e1be50c9d23313aec9aca91343c"
+}

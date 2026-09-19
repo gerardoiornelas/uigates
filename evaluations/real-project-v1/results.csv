@@ -1,0 +1,17 @@
+task,family,control_accepted,treatment_accepted,control_tokens,treatment_tokens,tokens_saved
+list,query,true,true,74136,96766,-22630
+search,query,true,true,93121,75264,17857
+overdue,query,true,true,73542,94334,-20792
+due-soon,query,false,false,,,
+summary,reporting,false,false,,,
+by-label,reporting,false,false,,,
+csv,reporting,false,false,,,
+markdown,reporting,false,false,,,
+rename,metadata,false,false,,,
+priority,metadata,false,false,,,
+label,metadata,false,false,,,
+schedule,metadata,false,false,,,
+reopen,workflow,false,false,,,
+archive,workflow,false,false,,,
+remove,workflow,false,false,,,
+batch-complete,workflow,false,false,,,

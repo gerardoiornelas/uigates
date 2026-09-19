@@ -3,12 +3,9 @@
 An executable model of the UI-GATES authority and knowledge rules, kept so those rules can be
 tested instead of only described. **It is not what runs when you invoke `uig`.**
 
-- The product is the portable Markdown skill (`skills/uig`, `skills/ui-gates`). Nothing in a
-  skill, manifest, hook or doc calls this code, and there is no `package.json` or entrypoint.
-- The real learning harness (lesson store, evaluator, frozen plans, usage ledger, `npm run uig:learn`)
-  lives in the `gerardoiornelas-portfolio` repository. Its `Learning` store already covers
-  approval, expiry, freshness and retirement, and it disclaims being an authorization service.
-- Findings from this engine that applied there were ported as tests and a fix, not as code.
+- The portable Markdown skill (`skills/uig`, `skills/ui-gates`) does not automatically execute this engine.
+- The optional general coding-task harness now lives in `../learning/`: run `node plugins/uigates/learning/cli.mjs help` from the repository root. It has real agent execution, external acceptance checks, full token accounting and scoped certificates.
+- The separate receipt-authoring harness and usage ledger in `gerardoiornelas-portfolio` remain a different, narrower integration.
 
 ## What it models
 
@@ -26,9 +23,9 @@ tested instead of only described. **It is not what runs when you invoke `uig`.**
 
 - **Principal identity is a string.** Any code in the process can pass `'bob'`. Real enforcement needs authentication.
 - **The ledger is in memory** and trusts its process. Cross-process use needs signed records. Cumulative risk resets per process (including the CLI).
-- **Evidence content is not verified.** An authorized actor that fabricates evidence gets through; the verifier contains it afterward (arcade test G5).
+- **Evidence defaults to hash-bound project-local files.** Hashes establish integrity, not semantic truth. The new learning harness separately executes pinned verifiers. Simulated tests opt into a fixture evidence validator explicitly.
 - **Replanning is checked for presence, not soundness,** and only when proposals carry a `taskId` and the engine is given the receipt store.
-- `UIGatesWrapper` auto-approves gated actions (a labelled simulation), and the CLI's `receipt` command records a hardcoded success.
+- `UIGatesWrapper` requires a principal-approval callback for gated actions and reports unfinished work honestly. The synthetic CLI `receipt` command has been removed.
 - Not implemented: the Decision level, retrieval by graph, any UI.
 
 ## Running the tests
@@ -38,7 +35,9 @@ npx tsx plugins/uigates/core/promises_test.ts          # documented promises hol
 npx tsx plugins/uigates/core/synthesis_pressure_test.ts # adversarial receipts and learning
 npx tsx plugins/uigates/core/arcade_pressure_test.ts    # two real games through the full lifecycle
 npx tsx plugins/uigates/core/skills_sync_test.ts        # skill copies stay consistent
+npx tsx --test plugins/uigates/core/learning_regression_test.ts # independent audit regressions
+node --test plugins/uigates/learning/learning.test.mjs  # evidence and certification
 ```
 
-The learning results use scripted workers and verifiers written here. They show the receipt → lesson →
-next-task loop works, not that a coding agent benefits; that needs the harness's evaluation.
+The old arcade/compounding results use scripted workers. They show receipt → lesson → next-task mechanics,
+not coding-agent efficiency. Actual coding-agent data belongs to the separately frozen Workboard evaluation.

@@ -35,7 +35,10 @@ const AUDIT_RECORDS = /(^|\/)\.uig\/(intents|proposals|authorizations|receipts)(
 const UIG_STATE = /(^|\/)\.uig(\/|$)/;
 
 const fingerprint = (p: Proposal) =>
-  crypto.createHash('sha256').update(JSON.stringify([p.id, p.intentId, p.actorId, p.action, p.resource, p.impact, p.taskId ?? null, p.replan ?? null])).digest('hex');
+  crypto.createHash('sha256').update(JSON.stringify([
+    p.id, p.intentId, p.actorId, p.action, p.resource, p.impact, p.rationale,
+    p.risk, p.authorityRequested, p.verificationPlan, p.proposedAt, p.taskId ?? null, p.replan ?? null,
+  ])).digest('hex');
 
 export class GovernanceEngine {
   private policies: Policy[] = [];
@@ -76,7 +79,7 @@ export class GovernanceEngine {
     if (proposal.intentId !== intent.id) {
       return deny(`Proposal ${proposal.id} belongs to intent ${proposal.intentId}, not ${intent.id}.`);
     }
-    if (new Date(intent.expiry).getTime() <= Date.now()) {
+    if (!Number.isFinite(new Date(intent.expiry).getTime()) || new Date(intent.expiry).getTime() <= Date.now()) {
       return deny(`Intent ${intent.id} has expired; it grants no authority.`);
     }
     if (intent.authorizedActors && !intent.authorizedActors.includes(proposal.actorId)) {
@@ -109,11 +112,13 @@ export class GovernanceEngine {
       return deny(`Resource ${proposal.resource} is an authority or audit record; it cannot be altered through the workflow.`);
     }
 
-    // 1. Basic Intent Match
-    // FIXED: Ensure the domain check is inclusive enough for the test
-    const isWithinDomain = !escapesRoot && intent.authorityDomain.some(domain =>
-      resource.includes(domain) || domain === '/'
-    );
+    // Domains are project-relative path prefixes, never substrings. '/' means
+    // the project root, not permission to address the host filesystem.
+    const isWithinDomain = !escapesRoot && !path.posix.isAbsolute(resource) && !/^[a-z]:/i.test(resource) && intent.authorityDomain.some(domain => {
+      if (domain === '/') return true;
+      const prefix = path.posix.normalize(domain.replace(/\\/g, '/')).replace(/\/$/, '');
+      return prefix !== '..' && !prefix.startsWith('../') && (resource === prefix || resource.startsWith(prefix + '/'));
+    });
 
     if (!isWithinDomain) {
       return deny(`Resource ${proposal.resource} is outside the authorized domain.`);
@@ -193,7 +198,7 @@ export class GovernanceEngine {
     if (state !== result.suggestedState) {
       throw new Error(`Cannot authorize ${proposal.id} as ${state}: evaluation resolved to ${result.suggestedState}.`);
     }
-    if (new Date(intent.expiry).getTime() <= Date.now()) throw new Error(`Cannot authorize ${proposal.id}: intent ${intent.id} has expired.`);
+    if (!Number.isFinite(new Date(intent.expiry).getTime()) || new Date(intent.expiry).getTime() <= Date.now()) throw new Error(`Cannot authorize ${proposal.id}: intent ${intent.id} has expired or is invalid.`);
 
     this.recordAuthorizedRisk(proposal.intentId, proposal.impact);
     const authorization: Authorization = {

@@ -1,0 +1,36 @@
+{
+  "body": {
+    "guidance": "Candidate lesson from discovery-add and discovery-complete; not approved knowledge. Workboard requires Node 22+. features/*.mjs export run(board, input); cli.mjs discovers commands, owns load/save through storage/file.mjs, and saves only when serialized board changes. Features operate in memory and return JSON-serializable values. domain/board.mjs provides createBoard, validateBoard, transaction and view. Use transaction(board, operation, draft => ...) for mutations: it validates before/after, commits the draft, and returns cloned data. Audit entries {sequence: events.length+1, operation} are added only when serialized items change; board-level metadata changes alone do not trigger an entry. view validates and clones items for isolated query/report results. domain/records.mjs provides makeRecord, requireRecord, canonicalLabels and day. IDs/revisions are positive safe integers; IDs are unique and nextId exceeds all IDs. Titles are trimmed/nonempty; priorities are 1–3; labels are trimmed, lowercase, deduplicated, nonempty and sorted; dates must be real YYYY-MM-DD dates or absent. features/add.mjs uses makeRecord with draft.nextId, appends once and increments nextId once; defaults are open, priority 2, labels [], due null, revision 1. features/complete.mjs uses requireRecord: open becomes done with revision +1; done is idempotent; archived throws. Invalid inputs and ID/revision overflow were checked for rollback; returned data was checked for isolation. Verification observed: node --test test/*.test.mjs, node --check features/complete.mjs, and focused node --input-type=module assertions for defaults, normalization, events, idempotence, aliasing and rollback. Each feature passed six independent behavioral checks.",
+    "appliesWhen": "Evaluating future Workboard query, reporting, metadata or workflow features against the observed in-memory feature API, validation, transaction and persistence boundaries.",
+    "doNotApplyWhen": "The repository contracts have changed, or requirements concern unobserved schemas, query semantics, concurrency, performance or richer audit history. These runs do not establish those behaviors.",
+    "project": "workboard",
+    "families": [
+      "query",
+      "reporting",
+      "metadata",
+      "workflow"
+    ],
+    "dependencies": {
+      "domain/board.mjs": "60a55d4a30ed5927e96e4408ec6fcb8c836bc513961d6c107fe463dc962b72a3",
+      "domain/records.mjs": "5a54dd3b7cc8ea8e1d636b481d7d1f2549fba84d9b4dc1dd1d57a9cb607bbf77",
+      "storage/file.mjs": "0ad878b223e66fec1a3c0b0929c46c6bd370a0b63f73647a9dbb81a2dea9cbdf"
+    },
+    "evidenceRuns": [
+      "discovery-add",
+      "discovery-complete"
+    ],
+    "evidence": [
+      {
+        "id": "discovery-add",
+        "sha256": "4c43b2d510b19eb1022759f8aa35001d0bf8033cdb8f39e87dc606b6f910ac85"
+      },
+      {
+        "id": "discovery-complete",
+        "sha256": "dc9ae1f4fa9adc5c8a3a493ec32f59cc3fcc71cd20769a0894a903384d5d8df2"
+      }
+    ],
+    "createdAt": "2026-09-19T00:42:09.659Z",
+    "id": "lesson-1079c5e5daca0992da2b"
+  },
+  "sha256": "665186df9f1116603aca28a9759cc799fe1d7a3bd7c9b344be1a1be88604012a"
+}

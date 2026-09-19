@@ -1,0 +1,11 @@
+import { view } from '../domain/board.mjs';
+
+export function run(board, { query }) {
+  if (typeof query !== 'string' || !query.trim()) {
+    throw Error('query must be a nonempty string');
+  }
+  const term = query.trim().toLowerCase();
+  return view(board)
+    .filter(record => record.state !== 'archived' && record.title.toLowerCase().includes(term))
+    .sort((a, b) => a.id - b.id);
+}

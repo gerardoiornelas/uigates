@@ -1,0 +1,19 @@
+import { view } from '../domain/board.mjs';
+import { day } from '../domain/records.mjs';
+
+export function run(board, { today, days }) {
+  if (day(today) === null) throw Error('today must be a nonempty YYYY-MM-DD date');
+  if (!Number.isInteger(days) || days < 0 || days > 365) {
+    throw Error('days must be an integer between 0 and 365');
+  }
+
+  const start = new Date(today + 'T00:00:00Z').getTime();
+  const end = start + days * 86_400_000;
+  return view(board)
+    .filter(record => {
+      if (record.state !== 'open' || !record.due) return false;
+      const due = new Date(record.due + 'T00:00:00Z').getTime();
+      return due >= start && due <= end;
+    })
+    .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : a.id - b.id));
+}

@@ -1,0 +1,131 @@
+{
+  "startedAt": "2026-09-18T23:33:53.034Z",
+  "finishedAt": "2026-09-18T23:34:20.748Z",
+  "node": "v22.22.2",
+  "platform": "darwin",
+  "arch": "arm64",
+  "headAtCompletion": "2082c8757e368dcbc935368b7487bf88cc3cd825",
+  "sourceHashes": {
+    "plugins/uigates/.codex-plugin/plugin.json": "9e928d08075b94e4b01785e370d152d2d2685f26d0c812a5de9192e296891fab",
+    "plugins/uigates/cli/main.ts": "f57c7bce730e26192559840e839aa5b7e435a2c6343b3c4ef3893633e231fb76",
+    "plugins/uigates/core/AuthorityLedger.ts": "748841e7efc89494badaa6e164a18e034be5d5c6df14d07f2562ea9387b4835c",
+    "plugins/uigates/core/GovernanceEngine.ts": "c7df2777a4bfd5c3a025c28e7ed21a8816fdfecb22c241681439e8fe4344c4cc",
+    "plugins/uigates/core/README.md": "900cffb02b7ec765d4f73716f105691b45b60b106dc48468ffd5fd46e4f0d3b5",
+    "plugins/uigates/core/ReceiptStore.ts": "901863cc779b454be041bf678f4f27be2fea6cd0cb57156da81102ba934e2cb1",
+    "plugins/uigates/core/StateStore.ts": "437ed366e9a05ed5fb1bf8a2f1134fd46165e95a9288d1be5d083e9b4fdb1556",
+    "plugins/uigates/core/UIGatesWrapper.ts": "919653b3aacace0f0b061841fd59bbc4999bb259a4adfc5a19664de01cf0d095",
+    "plugins/uigates/core/arcade/approaches.ts": "e03d83c5a386de10052eece9a732b5264a9f33d35baf8263a678364075f0cede",
+    "plugins/uigates/core/arcade/breakout.template.js": "eed4bac557f790761b0445839659808af81f5fec4dd40af022ea8273d86f465b",
+    "plugins/uigates/core/arcade/pong.template.js": "33b495a2c9238f3a6c387009d7bf2a5e9ed7ba52f0dedb356501185b9ab54a47",
+    "plugins/uigates/core/arcade_pressure_test.ts": "6bdca1aea50b71fd5b52d8439491caafe80e5024d8fe26430f52b501b32ac144",
+    "plugins/uigates/core/compounding_test.ts": "a0a05aa78a3e590e1c4c2d3434ac4c4a4684bca6873c1afcf86780436da455f1",
+    "plugins/uigates/core/demo.ts": "323bd73c6e8f24a32bdc73ec0e29b64f49e39b0ab566c872d64b8d3d5ed5e445",
+    "plugins/uigates/core/full_cycle_demo.ts": "4ea7dde39051119f8bb394252217b3e6389491471caebdf488ce0115fd5dd907",
+    "plugins/uigates/core/game_dev_test.ts": "b34c5140792850dc8c689bc8d37250997cdcfeb67b77033b1a289aaf894be6e6",
+    "plugins/uigates/core/pressure_tests.ts": "465f8770c5b6888ec1fc8c357d2c5559d2b609aa573e273baac4d8ca9f43fad3",
+    "plugins/uigates/core/promises_test.ts": "27f643dce5238a04a8696e727c47cbc520ee4f6f1acb303b2440812a24b6e55f",
+    "plugins/uigates/core/skills_sync_test.ts": "1b4285646e29392e50cbeb4b6cf52e577a65d524f2b4b5fc7b3677e043fa3698",
+    "plugins/uigates/core/synthesis_pressure_test.ts": "2888086501b5526f869e14d5d1f1b98b558dad497f9d6b67222edeee2c368211",
+    "plugins/uigates/core/test_protection.ts": "7aa5b2d5572706714066ef8aa38e45d132f930465c3ec9bb2cd5544d21997032",
+    "plugins/uigates/core/types/primitives.ts": "45fbaef9cf23a3a6211ec6758bac37c7d0e5e32d76aa33495064942a139bc8e9",
+    "plugins/uigates/intelligence/aidd/orchestrator.ts": "bc0f0b546b89489bc15c6347a6065b4102d1b5a343d27a67bcb9363ad5d63a17",
+    "plugins/uigates/intelligence/ce/synthesizer.ts": "ccc7b44b3f2a2350b2bb08299dbf317d63dff621c868524eab7831ec630a344d",
+    "plugins/uigates/intelligence/loop/driver.ts": "62e8ff4ce29e96174f43d8b477c2d31b3ae81f2ae5f20dc331a4310905043c52",
+    "plugins/uigates/skills/uig/SKILL.md": "1eb04786695658c4ac01ef767ce9bdeff5f1f0226384034e59d511e37ff2a5c2",
+    "examples/pacman/game.js": "fe6018cf6969dd44544d75fdfd9ee9f0e0c0f743f7fa64bc0744a627d7594da4",
+    "examples/pacman/index.html": "46a19f6a254d40c3c75d0dc118a11866a94112114a77accd77fe45232e1ee86e",
+    "examples/pacman/style.css": "e553538101757271799b8deae4f0b5badb59b8b4e5e3900ff5d186ce60af897d",
+    "examples/pacman-audit/engine.mjs": "9f6a1933f003dca2aa6caef2d2c2dd15027fd774430e75a02e99f009e48c9e01",
+    "examples/pacman-audit/index.html": "fb030a64532c39e8ce4df7e5436f79fe3720fa36b844a722915434de08f44b96",
+    "examples/pacman-audit/ui.mjs": "75332768d6a13bcad52f6f30b33a6465a4786da784d7e83d43518baccecbd443"
+  },
+  "changedDuringRun": [],
+  "suites": [
+    {
+      "name": "promises",
+      "args": [
+        "--import",
+        "/Users/jenniferornelas/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/loader.mjs",
+        "plugins/uigates/core/promises_test.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 463.62425
+    },
+    {
+      "name": "synthesis",
+      "args": [
+        "--import",
+        "/Users/jenniferornelas/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/loader.mjs",
+        "plugins/uigates/core/synthesis_pressure_test.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 7033.391125
+    },
+    {
+      "name": "arcade",
+      "args": [
+        "--import",
+        "/Users/jenniferornelas/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/loader.mjs",
+        "plugins/uigates/core/arcade_pressure_test.ts",
+        "--no-showcase"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 27696.192583
+    },
+    {
+      "name": "skills",
+      "args": [
+        "--import",
+        "/Users/jenniferornelas/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/loader.mjs",
+        "plugins/uigates/core/skills_sync_test.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 422.887709
+    },
+    {
+      "name": "baseline",
+      "args": [
+        "audits/pacman-2026-09-18/baseline.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 186.96766699999998
+    },
+    {
+      "name": "game",
+      "args": [
+        "audits/pacman-2026-09-18/game-check.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 428.306208
+    },
+    {
+      "name": "experiment",
+      "args": [
+        "--import",
+        "/Users/jenniferornelas/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/loader.mjs",
+        "audits/pacman-2026-09-18/experiment.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 2478.116041
+    },
+    {
+      "name": "safety-probes",
+      "args": [
+        "--import",
+        "/Users/jenniferornelas/.npm/_npx/fd45a72a545557e9/node_modules/tsx/dist/loader.mjs",
+        "audits/pacman-2026-09-18/safety-probes.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "elapsedMs": 414.40266599999995
+    }
+  ],
+  "limits": "Baseline and safety probes intentionally report violated properties in their JSON; exit 0 only means all observations completed. Timing is concurrent harness runtime, not agent efficiency."
+}

@@ -1,0 +1,74 @@
+{
+  "body": {
+    "id": "workboard-v1.schedule.treatment",
+    "taskId": "schedule",
+    "mode": "evaluation",
+    "arm": "treatment",
+    "project": "workboard",
+    "family": "metadata",
+    "planSha256": "f7c44aff759290f65fa5c2bf2b2024fd87507b12da796685e43d8793affb6b22",
+    "protocolSha256": "93b0b0efdef41b42ac77a1f2e904f69bd3831e1be50c9d23313aec9aca91343c",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "high",
+    "sourceHashes": {
+      "cli.mjs": "04394005bd669df5fd76c871b2f76898b40f3fb43959c8b191f20371daea0c17",
+      "domain/board.mjs": "60a55d4a30ed5927e96e4408ec6fcb8c836bc513961d6c107fe463dc962b72a3",
+      "domain/records.mjs": "5a54dd3b7cc8ea8e1d636b481d7d1f2549fba84d9b4dc1dd1d57a9cb607bbf77",
+      "features/.gitkeep": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "features/add.mjs": "52c5870d78c2278c088e5c3e3f22f3679662ee1da69c9c6b980a4f41397b68d8",
+      "features/complete.mjs": "21f3b36e126d59cc92f280f9146521332f5c840394277e1ec9dbd8379d157ac6",
+      "README.md": "83c53c3b9cae2095f18045448bcf3f592d28f91a4416bb00d1c522e72d45cab4",
+      "storage/file.mjs": "0ad878b223e66fec1a3c0b0929c46c6bd370a0b63f73647a9dbb81a2dea9cbdf",
+      "test/contracts.test.mjs": "e9a598d97bd9461d0e20da11a801d8efcbbea2a5aaf0178905d854cf30fd427c"
+    },
+    "finalHashes": {
+      "cli.mjs": "04394005bd669df5fd76c871b2f76898b40f3fb43959c8b191f20371daea0c17",
+      "domain/board.mjs": "60a55d4a30ed5927e96e4408ec6fcb8c836bc513961d6c107fe463dc962b72a3",
+      "domain/records.mjs": "5a54dd3b7cc8ea8e1d636b481d7d1f2549fba84d9b4dc1dd1d57a9cb607bbf77",
+      "features/.gitkeep": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "features/add.mjs": "52c5870d78c2278c088e5c3e3f22f3679662ee1da69c9c6b980a4f41397b68d8",
+      "features/complete.mjs": "21f3b36e126d59cc92f280f9146521332f5c840394277e1ec9dbd8379d157ac6",
+      "README.md": "83c53c3b9cae2095f18045448bcf3f592d28f91a4416bb00d1c522e72d45cab4",
+      "storage/file.mjs": "0ad878b223e66fec1a3c0b0929c46c6bd370a0b63f73647a9dbb81a2dea9cbdf",
+      "test/contracts.test.mjs": "e9a598d97bd9461d0e20da11a801d8efcbbea2a5aaf0178905d854cf30fd427c"
+    },
+    "sourceUnchanged": true,
+    "unexpectedChanges": [],
+    "changed": [],
+    "artifacts": {},
+    "suppliedLessons": [
+      "lesson-1079c5e5daca0992da2b"
+    ],
+    "prompt": "8eb8f72086776430d821767df65b3fc73ae63ec3ebf8d7b347251706bbc3c508",
+    "trace": "7c0c4c452ee582b7de219a86a13563b1b68d512441247e341d83cb957163a675",
+    "stderr": "0ed0a475db206fb4aa8f0aaee7c10394ec27bb9e89d46056bfdfb3145c3c150b",
+    "usage": {
+      "complete": false,
+      "input": null,
+      "output": null,
+      "cached": null,
+      "total": null,
+      "reason": "Missing, failed or unfinished turn"
+    },
+    "processExitCode": 1,
+    "timedOut": false,
+    "processError": null,
+    "checks": [
+      {
+        "name": "schedule",
+        "file": "/Users/jenniferornelas/Documents/Git/violetek/uigates/evaluations/real-project-v1/verify.mjs",
+        "beforeHash": "246fc7d5867ad39792cb75e4616993988d3836055ba3cd62f06a2fa00a8604d2",
+        "afterHash": "246fc7d5867ad39792cb75e4616993988d3836055ba3cd62f06a2fa00a8604d2",
+        "exitCode": 1,
+        "timedOut": false,
+        "log": "fda94cafff7dc9f252678abf963359f3ec11deb3522ec20561c959db81079f72"
+      }
+    ],
+    "accepted": false,
+    "startedAt": "2026-09-19T00:40:09.886Z",
+    "finishedAt": "2026-09-19T00:40:12.781Z",
+    "workspaceIsolation": "separate ephemeral workspaces; guidance withheld from control; trusted workers, not a hostile-process security boundary",
+    "runner": "codex-exec-json-v1"
+  },
+  "sha256": "eb4548b4b604e94293726b582528614d75d1d9e3f1b84daf9e5218ad3ec11dbb"
+}

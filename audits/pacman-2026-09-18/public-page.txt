@@ -1,0 +1,107 @@
+UI-GATES — Authority-Aware Agentic Work | Gerardo I. Ornelas
+Gerardo I. Ornelas
+Authority-aware agentic work
+UI-
+GATES
+UI-GATES—User-Intent Gated Agentic Task Execution & Synthesis—is an authority-aware operating system and portable skill for agentic work. It brings intent, authority, verification, and durable knowledge into the same loop—so agents move quickly without treating access as permission or experience as forgotten context.
+Explore UIGATES on GitHub ↗
+See how it works ↓
+SKILL-GUIDED WORKFLOW
+A portable Markdown skill guides the agent through this sequence. It does not install a ticketing interface or a runtime control panel.
+01
+INTENT
+02
+DISCOVER
+03
+PLAN
+04
+PROPOSE
+05
+UI-GATE
+·  ALLOW / DENY / ESCALATE
+06
+EXECUTE
+07
+VERIFY
+08
+RECEIPT
+09
+SYNTHESIZE
+REASONING PROPOSES · AUTHORITY DECIDES · VERIFIED WORK SYNTHESIZES
+The distinction that matters
+UI-GATES
+The operating system
+The full loop: principal intent, scoped proposals, authority decisions, execution, verification, receipts, and evidence-backed learning.
+UI-GATE
+The decision at execution time
+The authority plane inside UI-GATES. It answers: is this actor authorized to perform this action, on this resource, under this intent, right now?
+Compound Engineering
+The software playbook
+The UI-GATES specialization for repository work: plan, code, test, review, preserve provenance, and teach the next task only what was actually learned.
+The operating loop
+“Reasoning proposes. Authority decides. Verified work synthesizes into reusable knowledge.”
+01
+Intent
+A principal defines the outcome, constraints, success evidence, allowed domain, and expiry. Technical capability never becomes authority by itself.
+02
+Discover
+The agent reads task-relevant committed knowledge and repository instructions before proposing anything.
+03
+Plan
+The agent defines the smallest scoped slice of work and the evidence that will prove it worked.
+04
+Propose
+The agent names the specific action, resource scope, impact, risk, authority requested, and verification plan before a consequential change.
+05
+UI-GATE
+At execution time, the gate allows, denies, or escalates the proposal. It evaluates who may do what, to which resource, under which intent, right now.
+06
+Execute
+Only the authorized action is performed. Execution never implies authorization on its own. After each step, the agent records what was expected, what actually happened, and the delta—and does not retry a delta without first returning to Plan to address its root cause.
+07
+Verify
+Authorized work is verified in the right surface: tests, live UI, review, security checks, or explicit human judgment. A passing build is evidence—not universal proof. This answers what actually happened.
+08
+Receipt
+Evidence of the authorized execution and its verification is preserved so a future agent can trace the decision. Its discrepancy analysis answers why actual differed from intent.
+09
+Synthesize
+Only evidence-backed decisions and reusable patterns are promoted into committed project knowledge for the next task. This answers what will be done differently: sustain what worked, improve what did not.
+The final three steps close the loop with the After Action Review — what was supposed to happen, what actually happened, why the difference, and what will be done differently. A loop that returns without answering all four has not closed.
+Learning from experience
+A lesson must earn its place in the next task.
+UI-GATES treats learning as a traceable change in future behavior: experience produces a lesson, an approved lesson guides a later task, and verification tests whether it helped. The first implementation focuses on receipt authoring.
+Capture and propose
+Instrumented receipt attempts record validation failures and successful corrections. A matching correction across two distinct tasks can produce a candidate lesson, with supporting evidence and conditions for reuse.
+Evaluate and approve
+Candidates are tested on unseen tasks against a control that receives no lesson. Evaluation and principal approval precede live reuse. Learning cannot supply authorization or waive human review.
+Reuse and retire
+Later tasks receive only applicable, approved lessons. Source changes and expired approvals stop stale reuse; acceptance regressions retire the affected lessons. Failed attempts and learning overhead stay in the comparison.
+Implemented; transfer tested in fixtures
+The local tools cover recording, lesson proposals, approval, selective reuse, and controlled evaluation. Six unseen paired fixtures exercise the learning mechanism. A real coding-agent comparison is still required to establish learning-driven improvement. The implementation uses persistent memory; it does not retrain the underlying model.
+A separate 12-run workflow comparison measured 12.6% fewer total worker tokens with the same automated checks passing. That comparison held lessons fixed, excluded parent and reviewer model usage, and left human UI and full operational acceptance pending. It does not demonstrate learned-memory gains or lower billing costs.
+Usage is tracked out of the box: the portable download records each invocation and completion to a local log, so
+npm run uig:learn -- stats
+reports real all-time runs and receipts across your projects. The evaluation harness (lesson store, evaluator, frozen plans) and any runtime control plane remain repository-local — the download is a workflow guide plus a usage ledger, not an installed system.
+The immediate value
+WITHOUT UI-GATES
+An agent can make rapid local progress while decisions stay implicit, permission is inferred from credentials, verification is uneven, and the next task must rediscover what the last task learned.
+WITH UI-GATES
+The agent knows its scope, asks before consequential actions, proves its result, and records what the evidence supports. A reusable lesson is retained only when warranted; no new lesson is a valid outcome.
+Authority, not theater
+Credentials and technical ability do not grant permission. The workflow requires a principal decision before a merge, deploy, external message, or production-impacting action.
+Proof proportional to risk
+Tests matter, but so can live UI validation, a security review, an approval, or a rollback plan. UI-GATES asks for the evidence appropriate to the claim.
+Learning without a junk drawer
+Learning earns promotion: Ephemeral → Task → Decision → Knowledge → Canon. Every promoted item links back to evidence and reuse guidance.
+Start with a real task
+Use the short
+UIG
+skill to make the next meaningful change safer and more useful than the last.
+View canonical source ↗
+Download uig-skill.md
+© Gerardo I. Ornelas
+Systems architect, founder, and advisor for governed AI and trusted visibility.
+Blog
+Author
+Privacy Policy

@@ -1,0 +1,82 @@
+{
+  "intent": {
+    "id": "1-0-discovery",
+    "principalId": "audit-fixture",
+    "goal": "Verify Pac-Man semantics",
+    "constraints": [
+      "Only local fixture executions"
+    ],
+    "successEvidence": [
+      "behavior results"
+    ],
+    "authorityDomain": [
+      "examples/pacman-audit/"
+    ],
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "createdAt": "2026-09-18T23:33:53.466Z"
+  },
+  "proposal": {
+    "id": "p1",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "action": "pacman:tunnel:a",
+    "resource": "examples/pacman-audit/engine.mjs",
+    "rationale": "Verify tunnel",
+    "impact": "low",
+    "risk": "Disposable simulation only",
+    "authorityRequested": "delegated",
+    "verificationPlan": "Execute tunnel behavior checks",
+    "proposedAt": "2026-09-18T23:33:53.467Z",
+    "taskId": "tunnel"
+  },
+  "authorization": {
+    "id": "auth_762041b9-8dbf-43ef-a90e-7236906b4750",
+    "proposalId": "p1",
+    "authorizedBy": "audit-fixture",
+    "state": "delegated",
+    "authorizedAt": "2026-09-18T23:33:53.468Z",
+    "expiry": "2026-09-19T00:33:53.466Z",
+    "actorId": "fixture-worker",
+    "intentId": "1-0-discovery",
+    "action": "pacman:tunnel:a",
+    "resource": "examples/pacman-audit/engine.mjs"
+  },
+  "receipt": {
+    "id": "r1",
+    "authorizationId": "auth_762041b9-8dbf-43ef-a90e-7236906b4750",
+    "intentId": "1-0-discovery",
+    "actorId": "fixture-worker",
+    "actionPerformed": "pacman:tunnel:a",
+    "expectedOutcome": "Execute tunnel behavior checks",
+    "actualOutcome": "Failed behavioral verification",
+    "delta": "left tunnel wraps to opposite edge; right tunnel wraps to opposite edge",
+    "evidence": [
+      "attempts.json#0 sha256:9a193d9e31afaf5ef11ad054c9ef827072f50d360fc0d7ea224cb8e04e93e5c2"
+    ],
+    "verifiedAt": "2026-09-18T23:33:53.472Z",
+    "taskId": "tunnel"
+  },
+  "evidence": {
+    "seed": 1,
+    "variant": 0,
+    "arm": "discovery",
+    "family": "tunnel",
+    "candidate": "a",
+    "checks": [
+      {
+        "name": "left tunnel wraps to opposite edge",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n0 !== 6\n"
+      },
+      {
+        "name": "right tunnel wraps to opposite edge",
+        "pass": false,
+        "error": "Expected values to be strictly equal:\n\n6 !== 0\n"
+      },
+      {
+        "name": "closed endpoint cannot wrap",
+        "pass": true
+      }
+    ]
+  }
+}

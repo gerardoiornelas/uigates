@@ -1,0 +1,29 @@
+body {
+    background-color: #111;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+#game-container {
+    position: relative;
+    border: 4px solid #222;
+}
+
+#ui {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    width: 100%;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+canvas {
+    display: block;
+    background-color: black;
+}

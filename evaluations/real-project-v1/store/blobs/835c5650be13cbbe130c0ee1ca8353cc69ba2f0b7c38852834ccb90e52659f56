@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/rename.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/rename.mjs exporting run(board,{id,title}). Require a nonempty string title, trim it, update one nonarchived item, increment revision exactly once only if changed, return detached updated item. Same title is a no-op. Invalid input, missing item or archived item throws with atomic rollback. Follow transaction/audit conventions.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

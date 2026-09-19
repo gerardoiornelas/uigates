@@ -1,0 +1,38 @@
+[
+  {
+    "name": "left tunnel wraps",
+    "expected": 18,
+    "actual": 0,
+    "pass": false
+  },
+  {
+    "name": "crossing collision detected",
+    "expected": "lost",
+    "actual": "playing",
+    "pass": false
+  },
+  {
+    "name": "lethal collision on last dot remains loss",
+    "expected": "lost",
+    "actual": "won",
+    "pass": false
+  },
+  {
+    "name": "normal dot adds 10 points",
+    "expected": 10,
+    "actual": 10,
+    "pass": true
+  },
+  {
+    "name": "wall blocks movement",
+    "expected": 1,
+    "actual": 1,
+    "pass": true
+  },
+  {
+    "name": "all dots reachable",
+    "expected": 0,
+    "actual": 0,
+    "pass": true
+  }
+]

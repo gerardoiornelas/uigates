@@ -1,0 +1,7 @@
+Implement the requested feature in this local project. Work only in this workspace. Do not read other workspaces, external lessons, user settings, or network resources. Do not spawn agents or invoke other models. Do not commit, push, deploy, or change dependencies.
+
+Only these files may change: features/archive.mjs. Inspect project code as needed. Run relevant local checks. Preserve existing behavior.
+
+Create features/archive.mjs exporting run(board,{id}). Change done to archived and increment revision once. Archived is an idempotent no-op. Open, missing or invalid item throws without mutation. Return detached item. Follow transaction/audit conventions.
+
+Finish with a concise description of implementation, checks, and any unresolved issues.

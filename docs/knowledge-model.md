@@ -43,3 +43,9 @@ Every durable artifact must state:
 - Graph retrieval must return evidence links, confidence, and unresolved conflicts alongside any recommendation.
 
 See the [skill reference](../skills/ui-gates/references/knowledge-artifacts.md) for compact artifact templates.
+
+## Measured coding-agent reuse
+
+The optional [learning harness](certified-learning.md) makes the empirical portion executable. A candidate is grounded in at least two independently checked discovery tasks and source hashes. A frozen control/treatment evaluation must support transfer before a principal can approve live reuse. Retrieval checks the approval, expiry, project/task scope and current source; treatment acceptance regressions retire affected guidance.
+
+This does not automatically promote text to Canon. A local certificate describes measured task/model scope, acceptance uncertainty and net token accounting. It cannot certify arbitrary future coding work. Generalizing beyond one repository requires separate evidence, not a broader label on the same result.

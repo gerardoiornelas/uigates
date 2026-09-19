@@ -1,0 +1,6 @@
+[graphify extract] scanning /Users/jenniferornelas/Documents/Git/violetek/uigates/plugins/uigates
+[graphify extract] --code-only: skipping 2 non-code file(s) (2 docs, 0 papers, 0 images) — no LLM extraction
+[graphify extract] found 31 code, 0 docs, 0 papers, 0 images
+[graphify extract] AST extraction on 31 code files...
+  warning: 1 source file(s) produced zero nodes and are absent from the graph: plugin.json. A re-run will retry them (empties are no longer cached); if it persists, please report the file(s) (#1666).
+[graphify extract] wrote /Users/jenniferornelas/Documents/Git/violetek/uigates/evaluations/real-project-v1/architecture/graphify-out/graph.json — 326 nodes, 1047 edges (no clustering)

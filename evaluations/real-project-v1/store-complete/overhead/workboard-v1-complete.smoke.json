@@ -1,0 +1,11 @@
+{
+  "body": {
+    "planId": "workboard-v1-complete",
+    "phase": "maintenance",
+    "kind": "model",
+    "trace": "95cc217321ea6a7bfca4b903007b9a26aa579dfa35844526d6e645869e5e7096",
+    "processExitCode": 0,
+    "timedOut": false
+  },
+  "sha256": "a87bf08d1fbdb4692a3d787e38b590d59b374c34602ec3171519fe6cc5d8cf4c"
+}

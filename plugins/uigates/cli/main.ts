@@ -110,42 +110,14 @@ async function main() {
     }
 
     case 'receipt': {
-      const authId = args[1];
-      if (!authId) {
-        console.error('Usage: uig receipt <authId>');
-        process.exit(1);
-      }
-
-      const auth = store.getAuthorization(authId);
-      if (!auth) {
-        console.error('Authorization not found.');
-        process.exit(1);
-      }
-
-      const proposal = store.getProposal(auth.proposalId);
-
-      const receipt = {
-        id: `rec_${Date.now()}`,
-        authorizationId: auth.id,
-        intentId: proposal?.intentId || 'unknown',
-        actorId: proposal?.actorId || 'unknown',
-        actionPerformed: proposal?.action || 'unknown',
-        expectedOutcome: proposal?.verificationPlan || 'none',
-        actualOutcome: 'Success: Verified via tests',
-        delta: 'None',
-        evidence: ['test_result.log'],
-        verifiedAt: new Date(),
-      };
-
-      store.saveReceipt(receipt);
-      console.log(`UI-GATES: Receipt recorded. ID: ${receipt.id}`);
-      break;
+      throw new Error('Synthetic success receipts have been removed. Use node plugins/uigates/learning/cli.mjs discover or run to record actual execution, independent checks and token telemetry.');
     }
 
     default:
       console.log('UI-GATES CLI');
-      console.log('Commands: start <goal>, propose <intentId>, authorize <propId> <state>, receipt <authId>');
+      console.log('Commands: start <goal>, propose <intentId>, authorize <propId> <state>');
+      console.log('For real execution evidence and learning: node plugins/uigates/learning/cli.mjs help');
   }
 }
 
-main().catch(console.error);
+main().catch(error => { console.error(error); process.exitCode = 1; });

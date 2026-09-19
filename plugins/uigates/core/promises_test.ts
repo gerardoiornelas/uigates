@@ -66,7 +66,7 @@ function world(): World {
   const root = tmp();
   const store = new ReceiptStore();
   const ledger = new AuthorityLedger();
-  return { root, store, ledger, synth: new CESynthesizer(store, root, ledger) };
+  return { root, store, ledger, synth: new CESynthesizer(store, root, ledger, { evidenceVerifier: r => r.evidence.some(e => e.trim().length > 0) }) };
 }
 /** One authorized, executed, recorded receipt under its own intent. */
 function executed(w: World, o: { intent: string; action: string; principal?: string; actor?: string; success?: boolean; delta?: string }): Receipt {

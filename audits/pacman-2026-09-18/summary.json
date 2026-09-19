@@ -1,0 +1,40 @@
+{
+  "kind": "deterministic mechanism test; not a coding-agent trial",
+  "planSha256": "445e6218141c0bb96992267c642afe56177471d37547b0fc87d1a452b51f2831",
+  "seeds": 60,
+  "casesPerSeed": 6,
+  "arms": {
+    "discovery": {
+      "runs": 60,
+      "accepted": 60,
+      "attempts": 358,
+      "failures": 178,
+      "meanAttempts": 5.966666666666667
+    },
+    "control": {
+      "runs": 360,
+      "accepted": 360,
+      "attempts": 2174,
+      "failures": 1094,
+      "meanAttempts": 6.038888888888889
+    },
+    "memory": {
+      "runs": 360,
+      "accepted": 360,
+      "attempts": 1080,
+      "failures": 0,
+      "meanAttempts": 3
+    },
+    "memory-ablated": {
+      "runs": 360,
+      "accepted": 360,
+      "attempts": 2174,
+      "failures": 1094,
+      "meanAttempts": 6.038888888888889
+    }
+  },
+  "modelTokenUsage": null,
+  "attemptReduction": 0.5032198712051518,
+  "ablationExactlyMatchesControl": true,
+  "allAccepted": true
+}

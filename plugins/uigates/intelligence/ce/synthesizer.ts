@@ -26,6 +26,7 @@ export type PackStatus = 'verified' | 'conflicted' | 'retired';
 export const CANDIDATE_INTENTS = 2;
 
 interface PackState {
+  latestAt: number;
   action: string;
   expected: string;
   evidence: string;
@@ -81,29 +82,32 @@ function statusOf(s: PackState): PackStatus {
   return s.latest === 'verified' ? 'verified' : 'conflicted';
 }
 
-/** Reads state from the frontmatter only; the body is derived and never trusted. */
-function parsePack(text: string): PackState | undefined {
-  const fm = /^---\n([\s\S]*?)\n---\n/.exec(text)?.[1];
-  if (!fm) return undefined; // legacy pack without provenance: rebuilt from the next receipt
-  const get = (k: string) => new RegExp(`^${k}: ?(.*)$`, 'm').exec(fm)?.[1] ?? '';
-  const list = (k: string, sep = ',') => get(k).split(sep).map(x => x.trim()).filter(Boolean);
-  const intent = get('intent');
-  return {
-    action: get('action'),
-    expected: get('expected'),
-    evidence: get('evidence'),
-    intent,
-    actor: get('actor'),
-    intents: list('intents').length ? list('intents') : intent ? [intent] : [],
-    principals: list('principals'),
-    verified: list('verified'),
-    contradicted: list('contradicted'),
-    failureModes: list('failure_modes', ' | '),
-    latest: get('latest') === 'contradicted' ? 'contradicted' : 'verified',
-    knowledgeApprovedBy: get('knowledge_approved_by'),
-    canonApprovedBy: get('canon_approved_by'),
-    retiredBy: get('retired_by'),
-  };
+/** Markdown is a projection, not an approval record. A modified projection is withheld. */
+function trustedState(projectRoot: string, file: string): PackState | undefined {
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(projectRoot, '.uig', 'knowledge', 'pack_state', file + '.json'), 'utf8'));
+    const markdown = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs', file);
+    if (state.markdownSha256 && (!fs.existsSync(markdown) || crypto.createHash('sha256').update(Uint8Array.from(fs.readFileSync(markdown))).digest('hex') !== state.markdownSha256)) return undefined;
+    return state.state;
+  } catch { return undefined; }
+}
+
+export interface SynthesisOptions {
+  /** An independently controlled verifier can supply evidence validation. Fixture tests must opt in explicitly. */
+  evidenceVerifier?: (receipt: Receipt) => boolean;
+}
+
+/** Default evidence references bind existing project-local bytes: sha256:<hex>:<relative path>. */
+export function verifyEvidenceFiles(root: string, receipt: Receipt): boolean {
+  if (!receipt.evidence.length) return false;
+  return receipt.evidence.every(ref => {
+    const match = /^sha256:([a-f0-9]{64}):(.+)$/.exec(ref);
+    if (!match) return false;
+    try {
+      const base = fs.realpathSync(root), file = fs.realpathSync(path.resolve(base, match[2]));
+      return file.startsWith(base + path.sep) && crypto.createHash('sha256').update(Uint8Array.from(fs.readFileSync(file))).digest('hex') === match[1];
+    } catch { return false; }
+  });
 }
 
 /**
@@ -116,7 +120,7 @@ export function loadKnowledge(projectRoot: string): KnowledgePack[] {
   if (!fs.existsSync(dir)) return [];
   const out: KnowledgePack[] = [];
   for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort()) {
-    const s = parsePack(fs.readFileSync(path.join(dir, file), 'utf8'));
+    const s = trustedState(projectRoot, file);
     if (!s) continue;
     const level = levelOf(s), status = statusOf(s), candidate = isCandidate(s);
     out.push({
@@ -134,19 +138,21 @@ export class CESynthesizer {
   private projectRoot: string;
   private authority: AuthorityLedger | 'unverified';
   private rejected = new Map<string, string>();
+  private evidenceVerifier: (receipt: Receipt) => boolean;
 
   /**
    * `authority` is required. Knowledge is only as trustworthy as the authority
    * behind the receipts it came from, so a synthesizer has to be handed the ledger
    * that issued them. `'unverified'` is an explicit opt-out for demos and unit tests.
    */
-  constructor(store: ReceiptStore, projectRoot: string = process.cwd(), authority?: AuthorityLedger | 'unverified') {
+  constructor(store: ReceiptStore, projectRoot: string = process.cwd(), authority?: AuthorityLedger | 'unverified', options: SynthesisOptions = {}) {
     if (!authority) {
       throw new Error('CESynthesizer needs an AuthorityLedger (or the explicit "unverified" opt-out): receipts must be traceable to issued authority.');
     }
     this.store = store;
     this.authority = authority;
     this.projectRoot = projectRoot;
+    this.evidenceVerifier = options.evidenceVerifier ?? (r => verifyEvidenceFiles(projectRoot, r));
     this.knowledgeDir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
     this.ensureDir();
   }
@@ -211,12 +217,14 @@ export class CESynthesizer {
 
   /** A claimed success only counts when it carries evidence (the "mirage" guard). */
   private isVerifiedSuccess(r: Receipt): boolean {
-    return this.claimsSuccess(r) && this.hasNoDelta(r) && r.evidence.some(e => e.trim().length > 0);
+    return Number.isFinite(new Date(r.verifiedAt).getTime()) && this.claimsSuccess(r) && this.hasNoDelta(r)
+      && r.evidence.some(e => e.trim().length > 0) && (this.authority === 'unverified' || this.evidenceVerifier(r));
   }
 
   /** A claimed success without evidence is unverified, not contradictory. */
   private isContradiction(r: Receipt): boolean {
-    return !this.claimsSuccess(r) || !this.hasNoDelta(r);
+    return Number.isFinite(new Date(r.verifiedAt).getTime()) && (!this.hasNoDelta(r)
+      || (!/\b(pending|unknown|inconclusive)\b/i.test(r.actualOutcome) && NEGATIVE_OUTCOME.test(r.actualOutcome)));
   }
 
   private packPath(action: string): string {
@@ -231,17 +239,26 @@ export class CESynthesizer {
   }
 
   private read(filePath: string): PackState | undefined {
-    return fs.existsSync(filePath) ? parsePack(fs.readFileSync(filePath, 'utf8')) : undefined;
+    return trustedState(this.projectRoot, path.basename(filePath));
+  }
+
+  private write(filePath: string, state: PackState): void {
+    const markdown = this.render(state);
+    const stateDir = path.join(this.projectRoot, '.uig', 'knowledge', 'pack_state');
+    fs.mkdirSync(stateDir, { recursive: true });
+    // Preserve failures before the first success without publishing a recommendation.
+    if (state.verified.length) fs.writeFileSync(filePath, markdown);
+    fs.writeFileSync(path.join(stateDir, path.basename(filePath) + '.json'), JSON.stringify({
+      state, markdownSha256: state.verified.length ? crypto.createHash('sha256').update(markdown).digest('hex') : null,
+    }));
   }
 
   private recordSupport(receipt: Receipt, kind: 'verified' | 'contradicted'): void {
     const filePath = this.packPath(receipt.actionPerformed);
     const existing = this.read(filePath);
 
-    // Failures only matter to actions we have already promoted.
-    if (kind === 'contradicted' && !existing) return;
-
     const state: PackState = existing ?? {
+      latestAt: 0,
       action: flat(receipt.actionPerformed),
       expected: flat(receipt.expectedOutcome),
       evidence: flat(receipt.evidence.filter(e => e.trim()).join(', ')),
@@ -255,9 +272,12 @@ export class CESynthesizer {
     const id = safeId(receipt.id);
     if (state.verified.includes(id) || state.contradicted.includes(id)) return;
     state[kind].push(id);
-    state.latest = kind;
+    const at = new Date(receipt.verifiedAt).getTime();
+    if (at >= state.latestAt) { state.latest = kind; state.latestAt = at; }
 
     if (kind === 'verified') {
+      const evidence = flat(receipt.evidence.filter(e => e.trim()).join(', '));
+      if (evidence && !state.evidence.includes(evidence)) state.evidence = `${state.evidence}; ${evidence}`.slice(-4000);
       const intent = flat(receipt.intentId);
       if (!state.intents.includes(intent)) state.intents.push(intent);
       const principal = this.authority === 'unverified' ? undefined : this.authority.lookup(receipt.authorizationId)?.intent.principalId;
@@ -267,7 +287,7 @@ export class CESynthesizer {
       state.failureModes = state.failureModes.slice(-3);
     }
 
-    fs.writeFileSync(filePath, this.render(state));
+    this.write(filePath, state);
     console.log(`[CE] ${kind === 'verified' ? 'Promoted' : 'Contradicted'} lesson (${levelOf(state)}/${statusOf(state)}): ${path.basename(filePath)}`);
   }
 
@@ -289,7 +309,7 @@ export class CESynthesizer {
     if (levelOf(state) !== 'task') throw new Error(`Already ${levelOf(state)}.`);
     if (!isCandidate(state)) throw new Error('Knowledge needs reuse across more than one task: this lesson is verified in a single intent.');
     state.knowledgeApprovedBy = safeId(principalId);
-    fs.writeFileSync(filePath, this.render(state));
+    this.write(filePath, state);
   }
 
   /** Canon by principal approval, through the gate, and only from Knowledge. Never by volume of reuse. */
@@ -298,14 +318,14 @@ export class CESynthesizer {
     if (statusOf(state) !== 'verified') throw new Error(`Cannot make a ${statusOf(state)} pack canon.`);
     if (levelOf(state) !== 'knowledge') throw new Error('Canon must first be Knowledge: it is earned rung by rung, never skipped.');
     state.canonApprovedBy = safeId(principalId);
-    fs.writeFileSync(filePath, this.render(state));
+    this.write(filePath, state);
   }
 
   /** Withdraw a pack. Final: later successes do not revive a retired pack. */
   retire(action: string, principalId: string): void {
     const { filePath, state } = this.forPrincipal(action, principalId);
     state.retiredBy = safeId(principalId);
-    fs.writeFileSync(filePath, this.render(state));
+    this.write(filePath, state);
   }
 
   private forPrincipal(action: string, principalId: string): { filePath: string; state: PackState } {
@@ -350,6 +370,7 @@ verified: ${s.verified.join(',')}
 contradicted: ${s.contradicted.join(',')}
 failure_modes: ${s.failureModes.join(' | ')}
 latest: ${s.latest}
+latest_at: ${s.latestAt}
 knowledge_approved_by: ${s.knowledgeApprovedBy}
 canon_approved_by: ${s.canonApprovedBy}
 retired_by: ${s.retiredBy}

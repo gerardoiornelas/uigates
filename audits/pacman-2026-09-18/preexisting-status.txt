@@ -1,0 +1,34 @@
+M  .agents/skills/uig/SKILL.md
+M  .claude/skills/uig/SKILL.md
+M  README.md
+M  docs/architecture.md
+M  docs/knowledge-model.md
+M  docs/roadmap.md
+ M plugins/uigates/cli/main.ts
+ M plugins/uigates/core/GovernanceEngine.ts
+ M plugins/uigates/core/ReceiptStore.ts
+ M plugins/uigates/core/StateStore.ts
+ M plugins/uigates/core/UIGatesWrapper.ts
+ M plugins/uigates/core/compounding_test.ts
+ M plugins/uigates/core/full_cycle_demo.ts
+ M plugins/uigates/core/pressure_tests.ts
+A  plugins/uigates/core/skills_sync_test.ts
+ M plugins/uigates/core/types/primitives.ts
+ M plugins/uigates/intelligence/ce/synthesizer.ts
+ M plugins/uigates/intelligence/loop/driver.ts
+M  plugins/uigates/skills/uig/SKILL.md
+M  skills/ui-gates/SKILL.md
+M  skills/ui-gates/references/knowledge-artifacts.md
+M  skills/uig/SKILL.md
+?? .claude/launch.json
+?? .uig/
+?? audits/
+?? examples/
+?? plugins/uigates/core/AuthorityLedger.ts
+?? plugins/uigates/core/README.md
+?? plugins/uigates/core/arcade/
+?? plugins/uigates/core/arcade_pressure_test.ts
+?? plugins/uigates/core/game_dev_test.ts
+?? plugins/uigates/core/promises_test.ts
+?? plugins/uigates/core/synthesis_pressure_test.ts
+?? plugins/uigates/core/test_protection.ts

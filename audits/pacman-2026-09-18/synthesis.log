@@ -1,0 +1,47 @@
+
+=== PART A: ADVERSARIAL PRESSURE ON SYNTHESIS ===
+
+  PASS  A0 happy path promotes a verified success
+  PASS  A0b failed receipt is not promoted
+  PASS  A1 mirage (success, zero evidence) is NOT promoted  — 0 pack(s) written
+  PASS  A1b blank-string evidence is NOT promoted
+  PASS  A2 outcome "Unsuccessful" is NOT promoted
+  PASS  A2 outcome "No success observed" is NOT promoted
+  PASS  A2 outcome "Did not succeed: not a success" is NOT promoted
+  PASS  A2 outcome "Failed - success criteria unmet" is NOT promoted
+  PASS  A3 delta " none " (case/whitespace) is promoted
+  PASS  A4 traversal payload "../../escaped" cannot write outside packs dir
+  PASS  A4 traversal payload "a/../../../escaped" cannot write outside packs dir
+  PASS  A4 traversal payload "a/../../../../../escaped" cannot write outside packs dir
+  PASS  A4b action containing "/" (e.g. a file path) does not crash synthesis and is promoted
+  PASS  A5 no receipt is silently lost to a filename collision
+  PASS  A5b meaningfully different actions stay in separate packs  — 2 pack(s) for 2 distinct actions
+  PASS  A6 synthesis is idempotent
+  PASS  A7 a later failure demotes/deprecates the promoted pack  — 0 pack(s) still "verified"
+  PASS  A8 action text cannot forge extra sections in the pack  — 1 "Verified Action" heading(s)
+  PASS  A8b evidence text cannot forge extra sections in the pack
+  PASS  A9 pack records expected outcome + provenance (receipt id)
+  PASS  A10 200-receipt batch with one hostile entry completes and keeps the rest  — 201 packs, 31ms
+
+=== PART B: DOES IT LEARN? (200 seeds x 6 families x 5 tasks, K=5) ===
+
+  Chance level: a worker with no knowledge needs (K+1)/2 = 3 attempts on average.
+
+  Mean attempts to solve (95% CI), by how many earlier same-family tasks the worker has seen:
+
+  task#   control(no synth)   treatment(learning)   drift(stale packs first)
+  1       3.00 ±0.08          3.00 ±0.08            2.99 ±0.08
+  2       3.03 ±0.08          1.00 ±0.00            1.00 ±0.00
+  3       2.99 ±0.08          1.00 ±0.00            1.00 ±0.00
+  4       2.93 ±0.08          1.00 ±0.00            1.00 ±0.00
+  5       2.97 ±0.08          1.00 ±0.00            1.00 ±0.00
+
+  PASS  B1 control never improves: held-out tasks stay near chance  — control held-out mean 2.98 vs chance 3
+  PASS  B2 first exposure is at chance for treatment (nothing to learn from yet)  — task 1 mean 3.00
+  PASS  B3 after ONE prior success, held-out tasks solve in ~1 attempt  — treatment held-out mean 1.00 (control 2.98)
+  PASS  B4 improvement over control is statistically decisive (z > 10)  — z = 97.5
+  PASS  B5 learning is monotone-stable: no task index regresses after learning  — 1.00, 1.00, 1.00, 1.00
+  PASS  B6 stale/wrong packs cost at most one extra attempt on first contact  — drift task 1 mean 2.99 vs cold 3
+  PASS  B7 after drift the system unlearns the stale packs and relearns (task 3+ ≈ 1 attempt)  — 1.00, 1.00, 1.00
+
+=== SUMMARY: 28/28 checks passed ===
