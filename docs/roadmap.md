@@ -1,37 +1,66 @@
 ---
 title: UI-GATES Roadmap
 type: plan
-description: Incremental path from a Codex skill to a proven, authority-aware learning system.
+description: Incremental path from a Codex skill to a proven, authority-aware learning system, with current status.
 created: 2026-09-01
-updated: 2026-09-01
+updated: 2026-09-19
 tags: [ui-gates, roadmap, skill, plugin]
 status: active
 ---
 
 # UI-GATES Roadmap
 
-## Phase 0 — Canon and skill foundation
+Status as of 2026-09-19. **Done** means built and covered by a test that runs in CI. It does not mean a real agent has been shown to learn from it; that claim is Phase 2 and is open.
 
-- Publish terminology, architecture, knowledge model, and a Codex skill.
-- Define intent, proposal, receipt, and knowledge-promotion artifacts.
-- Keep all state repository-native and human-readable.
+| Phase | Status |
+| --- | --- |
+| 0 — Canon and skill foundation | **Done** |
+| 1 — Single-project proving loop | **Partial**: engine and CLI proven mechanically; no real-agent `/uig` session recorded yet |
+| 2 — Evaluation and refinement | **Partial**: harness and adversarial tests built; learning effect **not supported by any completed evidence** |
+| 3 — Plugin and control-plane decision | **Done**: plugin and `uig` CLI, no central service |
+| 4 — Cross-project operation | **Not started** |
 
-## Phase 1 — Single-project proving loop
+## Phase 0 — Canon and skill foundation — Done
 
-- Run one real software task through intent, proposal, delegated local execution, tests, receipt, and knowledge promotion.
-- Use the repository's existing test contract as the minimum verification gate.
-- Refresh Graphify after the learning update.
+- Terminology, architecture, knowledge model, and the skill in five copies (`skills/uig`, `skills/ui-gates`, Claude, Gemini/agents, Codex plugin), kept consistent by `skills_sync_test`.
+- Intent, proposal, receipt, and knowledge-promotion artifacts defined and implemented (`core/types/primitives.ts`).
+- All state is repository-native and human-readable (`.uig/`).
 
-## Phase 2 — Evaluation and refinement
+## Phase 1 — Single-project proving loop — Partial
 
-- Add repeatable examples and failure cases.
-- Evaluate whether agents retrieve the right knowledge and avoid stale or conflicting guidance.
-- Tighten only the rules supported by observed failure modes.
+Done:
 
-## Phase 3 — Plugin and control-plane decision
+- The engine is wired to the workflow: the skills direct an agent to the `uig` CLI, which passes intents, proposals and authorizations through `GovernanceEngine`, produces evidence itself (`receipt --run`), and synthesizes with `CESynthesizer`. Because each call is a new process, `Runtime` rebuilds authority state from `.uig/`. `cli/cli_test.ts` drives the full cycle across processes and checks that a receipt spends its authorization once, a delta forces a replan, cumulative risk persists, gated work cannot be self-approved, and a candidate needs reuse across intents plus a principal.
+- Two games (`examples/arcade`) and a Pac-Man audit went through the lifecycle with scripted workers.
 
-Create a plugin only when deterministic tooling is necessary for policy evaluation, receipts, graph refresh, or a principal approval surface. Do not build a service merely to reproduce markdown and git.
+Open:
 
-## Phase 4 — Cross-project operation
+- **A real agent, on a real task, using `/uig` with the CLI, end to end.** The CLI is tested by scripts that play the agent's part, not by an agent following the skill. Whether models reliably follow the recording steps is unmeasured.
+- Refreshing Graphify after a learning update is not built.
 
-Add explicit, reviewable promotion paths for knowledge and canon that are proven reusable across projects. Project-local rules remain authoritative.
+## Phase 2 — Evaluation and refinement — Partial
+
+Done:
+
+- Repeatable examples and failure cases: the synthesis pressure test (adversarial receipts, drift), the arcade and Pac-Man audits, and the regressions those audits found (`learning_regression_test`).
+- An executable learning harness (`plugins/uigates/learning/`): real agent runs, external verifiers, full token accounting, frozen plans, scoped certificates.
+
+Open:
+
+- **Whether agents learn from synthesized knowledge has no completed evidence.** The Workboard experiment ([REPORT](../evaluations/real-project-v1/REPORT.md), [attempt history](../evaluations/real-project-v1/ATTEMPTS.md)) is **not certified**: 3 of 16 pairs completed, guidance used more tokens in 2 of those 3, and n=3 supports no conclusion. The other 13 pairs were lost to a usage limit in the first attempt, and a rerun failed at startup (Codex could not open its state database), so neither outcome is a learning result. The Pac-Man synthesis result (3.00 to 1.00 attempts) used a simulated worker and proves the mechanics, not learning.
+- The Workboard lesson was model-authored through the harness's `propose`, not produced by `CESynthesizer`, and the task source was readable by both arms. It does not test the shipped synthesizer.
+- Tighten only the rules that observed failure modes support. Ongoing.
+
+### Paused: synthesis experiment
+
+Held on 2026-09-19. Design settled so far, to resume from: a real open-source repository with tasks mined from PRs merged after the learner's training cutoff and their tests as hidden verifiers; `CESynthesizer` as the synthesizer under test, fed by real receipts through the `uig` CLI; Claude via Claude Code as the learner; arms of no memory, a same-length placebo, naive appended run summaries, UI-GATES synthesis, and a hand-written oracle lesson; a pilot before any full run (roughly 6M tokens for about 72 runs, a rough estimate from Workboard's ~85k tokens per run). Before running: separate infrastructure-void from acceptance-failed runs with a pre-declared retry rule, add a budget and rate-limit preflight with resumable batches, and add a Claude Code runner. Nothing in this paragraph has been run.
+
+## Phase 3 — Plugin and control-plane decision — Done
+
+Deterministic tooling turned out to be necessary for policy evaluation, receipts and evidence, so the engine ships as a package (`uig` CLI, `npx uig`) alongside the Codex plugin. The decision not to build a service stands: state is files in the project, and nothing central is required.
+
+Open within this phase: a principal approval surface beyond the conversation, and signed records (see the [engine README](../plugins/uigates/core/README.md) for what the current records do and do not protect).
+
+## Phase 4 — Cross-project operation — Not started
+
+Add explicit, reviewable promotion paths for knowledge and canon that are proven reusable across projects. Project-local rules remain authoritative. This depends on Phase 2 producing evidence that lessons transfer at all within one project.

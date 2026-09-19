@@ -8,7 +8,7 @@
 
 This experiment used gpt-6-astra at high effort through a compatible Codex CLI. Agents wrote real feature modules, ran local checks, and were accepted or rejected by a separately executed, hash-pinned verifier. No worker was given a menu of prewritten solutions. All features belong to the usable [Workboard CLI](../../examples/workboard/README.md).
 
-The first execution attempt was interrupted by a Codex usage limit. The historical store retains every attempted arm, including unknown-token failures. A clean, one-shot rerun is prepared at [resume.mjs](resume.mjs) and will create `store-complete` after the usage window resets.
+The first execution attempt was interrupted by a Codex usage limit. The historical store retains every attempted arm, including unknown-token failures. A rerun through [resume.mjs](resume.mjs) was attempted afterwards into `store-complete` and failed at startup for an environment reason, not a learning result; no certificate is based on it. See [ATTEMPTS.md](ATTEMPTS.md).
 
 ## Actual token totals
 
