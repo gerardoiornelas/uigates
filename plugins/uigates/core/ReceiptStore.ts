@@ -13,6 +13,9 @@ export class ReceiptStore {
   private receipts: Map<string, Receipt> = new Map();
   private digests: Map<string, string> = new Map();
 
+  /** `quiet` suppresses the per-record log line, for stores rebuilt from disk on every CLI call. */
+  constructor(private readonly quiet = false) {}
+
   /**
    * Receipts are immutable: an id is written once. Re-recording identical
    * content is a harmless no-op; different content under the same id is an error.
@@ -25,13 +28,13 @@ export class ReceiptStore {
     }
 
     // Validation: Gated actions MUST have evidence.
-    if (receipt.evidence.length === 0) {
+    if (receipt.evidence.length === 0 && !this.quiet) {
       console.warn(`[ReceiptStore] WARNING: Receipt ${receipt.id} submitted with NO evidence.`);
     }
 
     this.digests.set(receipt.id, digest(receipt));
     this.receipts.set(receipt.id, deepFreeze(structuredClone(receipt)));
-    console.log(`[ReceiptStore] Recorded receipt ${receipt.id} for action ${receipt.actionPerformed}`);
+    if (!this.quiet) console.log(`[ReceiptStore] Recorded receipt ${receipt.id} for action ${receipt.actionPerformed}`);
   }
 
   get(id: string): Receipt | undefined {

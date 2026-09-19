@@ -28,6 +28,17 @@ Use the exact name `uig`; do not rely on prefix matching. This avoids ambiguity 
 
 The platform copies are intentionally small compatibility entrypoints. `skills/uig/SKILL.md` is the portable source to keep in sync; `skills/ui-gates/SKILL.md` is the long-form reference.
 
+## Engine CLI
+
+The skills work alone as guidance. To have `/uig` record intents, authority, receipts and synthesis through the engine, also install the package that provides the `uig` command (Node 22+):
+
+```bash
+npm install --save-dev github:gerardoiornelas/uigates
+npx uig help
+```
+
+Without it the skills fall back to markdown and say synthesis was not engine-verified. `.uig/` holds local runtime records; whether to commit `.uig/knowledge/` is the project's decision.
+
 ## Installation guidance
 
 For a project-local installation, copy `skills/uig/` into the appropriate host layout above. For Codex plugin distribution, install the `uigates` plugin so its skill remains plugin-qualified and cannot silently collide with an unrelated global `uig` skill.

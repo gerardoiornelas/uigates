@@ -40,6 +40,18 @@ Read [knowledge artifact templates](references/knowledge-artifacts.md) when crea
 - Promote canon only with explicit principal approval through the gate. Repeated reuse alone never promotes.
 - Promotion is never automatic or self-awarded: reuse across distinct tasks makes a candidate, and a principal promotes it.
 
+## Recording with the engine
+
+If the UI-GATES engine CLI is installed (`npx uig help` succeeds), record the workflow through it instead of prose. State lives in `.uig/`; each call is a separate process and the engine rebuilds its authority ledger from those records.
+
+1. `uig start "<goal>" --domain <path> --success <evidence>` bounds the intent (principal, delegated domain, expiry).
+2. `uig propose <intentId> --action … --resource … --impact low|medium|high --rationale … --risk … --verify …` returns **delegated**, **gated**, or **DENIED**. Stop on denied.
+3. `uig authorize <proposalId>` issues delegated authority. For a gated action, ask the principal first; pass `--approved-by <principal>` only after their explicit yes in conversation. Never approve your own gated action.
+4. Do the work, then `uig receipt <authorizationId> --run "<verification command>"`. The CLI runs the command and hashes its output as evidence; you do not assert the result. A non-zero exit is a delta: return to planning and retry only with `--replan-after <receiptId> --root-cause … --revision …`.
+5. `uig synthesize <intentId>`, then `uig knowledge`. Lessons start at Task level; reuse across distinct intents makes a candidate. `uig approve` and `uig retire` are the principal's decisions, never yours.
+
+Without the engine, record the same fields in markdown and say in the completion report that synthesis was not engine-verified.
+
 ## Stop conditions
 
 Stop and ask the principal when:

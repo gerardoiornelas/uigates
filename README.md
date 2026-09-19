@@ -68,10 +68,38 @@ Each promoted artifact must link to its source, supporting evidence, and reuse g
 docs/                 # Public system specification
 skills/uig/           # Portable short-form skill: `uig`
 skills/ui-gates/      # Formal UI-GATES skill
-plugins/uigates/      # Installable Codex plugin (skills); core/ is a reference engine, not run by uig
+plugins/uigates/      # Installable Codex plugin (skills), the authority/synthesis engine, and the `uig` CLI
+bin/uig.mjs           # `npx uig ...` launcher for the engine CLI
 ```
 
 Project integrations should keep their own committed local context bundles and generated Graphify outputs. See [the integration model](docs/architecture.md).
+
+## Engine CLI
+
+The skill is guidance; the engine is what makes a session verifiable. When the package is installed (`npm install github:gerardoiornelas/uigates`), `/uig` records the workflow through the `uig` CLI instead of prose:
+
+```bash
+npx uig start "add CSV export" --domain src/ --success "tests pass"
+npx uig propose <intentId> --action "add export" --resource src/export.js --impact low \
+  --rationale "requested feature" --risk "local" --verify "npm test"
+npx uig authorize <proposalId>                     # delegated work; gated work needs the principal's yes
+npx uig receipt <authorizationId> --run "npm test" # the CLI runs the command and hashes the output as evidence
+npx uig synthesize <intentId> && npx uig knowledge
+```
+
+Each call is a separate process, so the engine rebuilds its authority ledger, receipts and cumulative risk from the write-once records in `.uig/`. Synthesis is `CESynthesizer`: only receipts traceable to issued authority, with hash-bound evidence, become lessons; reuse across distinct intents makes a candidate; a principal promotes it.
+
+What this does not do: the records are plain files the agent's own process can also write, so they are tamper-evident to the engine's checks, not tamper-proof against a hostile agent, and the agent-facing rules (never self-approve, never run `approve`) are instructions the model follows. Real enforcement of what an agent may touch remains the host's sandbox and permission prompts. See the [engine README](plugins/uigates/core/README.md).
+
+## Development
+
+```bash
+npm ci            # pinned tsx and TypeScript
+npm run typecheck
+npm test          # learning harness, engine and CLI (across processes), skills sync, Workboard
+```
+
+CI runs the same commands on every push and pull request.
 
 ## Status
 
@@ -79,7 +107,7 @@ The portable skill is available alongside a reference authority engine and an op
 
 ```bash
 node plugins/uigates/learning/cli.mjs help
-node --test plugins/uigates/learning/learning.test.mjs
+npm run test:learning
 ```
 
 Read [evidence-backed coding-agent learning](docs/certified-learning.md) for the workflow, confidence thresholds, accounting and trust boundaries. The [Workboard project](examples/workboard/README.md) is the real coding workload; its [evaluation artifacts](evaluations/real-project-v1/) preserve the frozen experiment and actual results. A positive performance claim must come from a completed certificate, not from the existence of this implementation.
