@@ -129,7 +129,7 @@ Each traces to a finding in [RESULTS.md](../evaluations/vae-mvp-1/RESULTS.md). N
 | 2: `prohibited` is overloaded | Denials carry a kind; the CLI says "DENIED (outside the authorized domain)" with what to do next, and only a protected record is called a prohibition. An absolute or escaping path says it can never be inside a domain |
 | 1, 4, 10: scratch scripts, temp directories | The five skill copies tell the agent to keep verification scripts inside the project and leave them until the receipt is recorded; the sync test requires it |
 | 7: authorization after the write | The skill says to authorize before writing. An opt-in write-time hook (`uig enforce on`) refuses a Write, Edit, MultiEdit or NotebookEdit no unspent authorization covers. Replayed over the trial's real records, with time rewound to each real write, it allowed the three compliant writes and blocked exactly the two late ones. It cannot see writes made through Bash |
-| 3, 9: lessons with no value filter | **Not changed.** See the open decision in RESULTS.md |
+| 3, 9: lessons with no value filter | Implemented, **not yet tried by a real agent**. A receipt may carry `--lesson "<what the next agent should know>"`, and the CLI's `synthesize` promotes only receipts that do; a lesson that restates the action or the verification plan, is a placeholder or is too short or long is refused before the verification runs. The lesson is the agent's claim, not verified, and is a prompt-injection surface (see [knowledge-model.md](knowledge-model.md)). Matching similar lessons is deferred until a ledger holds real ones |
 
 ## Findings from setting up the trial
 

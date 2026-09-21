@@ -30,6 +30,7 @@ const ESSENTIALS: [name: string, test: RegExp][] = [
   ['promotion ladder, with the canonical spelling', /Ephemeral → Task → Decision → Knowledge → Canon/],
   ['stop and ask the principal on gated, prohibited, unknown or failing work', /Stop and ask the principal/],
   ['authorize before writing, and keep verification scripts in the project', /Authorize before you write[\s\S]*verification scripts?[\s\S]*inside the project/],
+  ['a receipt states its lesson, or teaches nothing', /--lesson[\s\S]*teaches nothing[\s\S]*cannot be given one later/],
   ['engine recording, with the no-self-approval rule', /npx --no-install uig help[\s\S]*(approved-by|approve)[\s\S]*(principal's|principal)/],
   ['honest fallback without the engine', /not engine-verified/],
   ['completion line', /UI-GATES COMPLETE — outcome verified, provenance recorded, next work grounded\./],

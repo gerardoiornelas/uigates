@@ -137,9 +137,11 @@ The transcript shows two messages, not one: that reply (19:17:50, pasted), then 
 
 Other changes made in response to the findings are listed in [docs/mvp.md](../../docs/mvp.md) ("Changes made after the trial"): denial kinds (finding 2), skill guidance on scripts and on authorizing before writing (findings 1, 4, 7, 10), and an opt-in write-time hook (finding 7). The hook was replayed over this trial's own records with time rewound to each real Write and Edit: it allowed the three compliant writes (task 1's validator edits and its harness) and blocked exactly the two late ones in task 2. It cannot see Bash writes, which is how the task 3 CI edit and the task 2 refactor were made.
 
-## Open decision: what should become a lesson (findings 3 and 9)
+## Decision: what should become a lesson (findings 3 and 9)
 
-After three tasks the ledger holds seven lessons, and most are process (`delete the temporary harness`, `document the validator in AGENTS.md`, `refactor validate_creature_catalog.py`). The synthesizer promotes every verified receipt and names the lesson after whatever action text the agent chose. Nothing has been changed, because this alters what counts as knowledge. Options, with a recommendation:
+**Decided: option B, implemented, and not yet tried by a real agent.** `uig receipt --lesson "<advice>"` states what the next agent should know; `uig synthesize` promotes only receipts that carry one, and refuses a lesson that restates the action or the verification plan, is a placeholder, or is too short or long, before the verification runs. It is covered by `core/lesson_test.ts` and `cli/cli_test.ts`, and the five skill copies now tell the agent to use it. Whether an agent states lessons worth reading, and whether a later agent uses them, is what the second trial can show. A lesson is the agent's unverified claim and text that later agents read into their context, so it is also a prompt-injection surface (see [knowledge-model.md](../../docs/knowledge-model.md)). The seven lessons already in trial 1's ledger were promoted under the old rule and are not affected.
+
+The question and the options as they stood after three tasks, when the ledger held seven lessons and most were process (`delete the temporary harness`, `document the validator in AGENTS.md`, `refactor validate_creature_catalog.py`), and the synthesizer promoted every verified receipt under the action text the agent chose:
 
 | Option | What it does | Cost |
 | --- | --- | --- |

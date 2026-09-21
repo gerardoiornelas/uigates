@@ -4,13 +4,13 @@ Written 2026-09-21 for a fresh session. Read this first; it is meant to be enoug
 
 ## In one paragraph
 
-UI-GATES is an authority-aware learning system for AI agents (`uigates` repo: skills, a TypeScript engine, a `uig` CLI). A first real-agent trial ran three tasks on the VAE repo. Stage 1 passed on the criteria fixed in advance, with caveats, and produced twelve findings. Most were acted on: a new `uig audit`, gating of CI and deployment files, denial kinds, skill guidance, and an opt-in write-time hook. **One change is half built (`--lesson`), and a second trial is planned but not prepared or run.** The results are in `evaluations/vae-mvp-1/RESULTS.md`; read that next.
+UI-GATES is an authority-aware learning system for AI agents (`uigates` repo: skills, a TypeScript engine, a `uig` CLI). A first real-agent trial ran three tasks on the VAE repo. Stage 1 passed on the criteria fixed in advance, with caveats, and produced twelve findings. Most were acted on: a new `uig audit`, gating of CI and deployment files, denial kinds, skill guidance, and an opt-in write-time hook. **The `--lesson` change is now finished (see below). A second trial is planned but not prepared or run.** The results are in `evaluations/vae-mvp-1/RESULTS.md`; read that next.
 
 ## Where everything is
 
 | What | Where | State |
 | --- | --- | --- |
-| The uigates repo | `~/Documents/Git/violetek/uigates`, branch `add-audit-and-gate-class` | Head is the commit that added this file; the last code commit is `797b104`. Not pushed. `.serena/` is untracked and not ours |
+| The uigates repo | `~/Documents/Git/violetek/uigates`, branch `add-audit-and-gate-class` | The last commit is the one that finished `--lesson`. Not pushed. `.serena/` is untracked and not ours |
 | Trial plan, criteria | `docs/mvp.md` | Current |
 | Frozen prompts, protocol, score sheet | `evaluations/vae-mvp-1/PROMPTS.md` | Revision 2; used by trial 1 |
 | Trial 1 results and findings | `evaluations/vae-mvp-1/RESULTS.md` | Current through the transcript review |
@@ -19,7 +19,7 @@ UI-GATES is an authority-aware learning system for AI agents (`uigates` repo: sk
 | The real VAE repo | `~/Documents/Git/violetek/vae`, branch `task/table-domain-and-field-ledger` at `4ec3baa` | The trial base. Not pushed. Fifty-two files of the user's own work are committed in it |
 | Personal skill | `~/.claude/skills/uig` (v0.3.0, old) | Untouched. **It overrides a project skill named `uig`**, which is why the skill ships as the `uigates` plugin (`/uigates:uig`) |
 
-Tests: `npm run typecheck && npm test` from the repo root. At `797b104`: 19 learning, 81 core, 2 Workboard, all passing.
+Tests: `npm run typecheck && npm test` from the repo root. 19 learning, 107 core, 2 Workboard (128), all passing.
 
 ## What was built, in order (all committed)
 
@@ -32,32 +32,18 @@ Tests: `npm run typecheck && npm test` from the repo root. At `797b104`: 19 lear
 | `b18f5a1` | Audit warns when a `--run` command runs a script outside the project or one that no longer exists |
 | `8eb97ce` | Transcript review: models, gate confirmed, protocol deviations |
 | `73ac8fb` | Denial kinds; opt-in write-time hook (`uig hook pre-write`, `uig enforce on`, `hooks/hooks.json`); skill guidance (authorize before writing; keep verification scripts in the project) |
-| `797b104` | **WIP:** lesson support in the synthesizer, inert (see below) |
+| `797b104` | Lesson support in the synthesizer, inert until the CLI enabled it |
+| next commit | `--lesson` finished: CLI, tests, skill copies, docs |
 
-## The unfinished change: `--lesson`
+## The `--lesson` change: done, and not yet tried by a real agent
 
-**Why.** After three tasks the ledger held seven lessons, mostly process ("delete the temporary harness"). A pack is keyed by the action text an agent chose; its "reuse guidance" is boilerplate that restates the action, the verification plan and evidence hashes. There is no lesson content. Every verified receipt is promoted regardless of value. Decision already made with the user: option B, an optional `--lesson "<what the next agent should know>"` on `receipt`, and only receipts that carry one are promoted. Semantic matching of similar lessons (option C) is deferred until a ledger of real lessons exists.
+**Why.** After three tasks the ledger held seven lessons, mostly process. Decision (option B): an optional `--lesson "<what the next agent should know>"` on `receipt`, and only receipts that carry one are promoted. Semantic matching (option C) waits for a ledger of real lessons.
 
-**Done and committed (`797b104`).** `Receipt.lesson?` in `core/types/primitives.ts`. In `intelligence/ce/synthesizer.ts`: `SynthesisOptions.requireLesson` (default **off**, so all existing callers and tests are unchanged); `lessonProblem(lesson, action, verificationPlan)` which rejects a lesson that is under 20 characters, a placeholder, over 500 characters, or only restates the action or the verification plan; `getUnpromoted()`; `PackState.lessons` (last three distinct, most recent last; older packs without the field are handled with `??= []`); `KnowledgePack.lessons`; and a `## Lesson` section in the rendered pack that says the text is the agent's claim and that the receipt does not prove the advice right. Typecheck and all tests pass because nothing enables it yet.
+**What exists.** `Receipt.lesson?`; `CESynthesizer` option `requireLesson` (library default off, only the CLI turns it on) and `lessonProblem()` (under 20 or over 500 characters, a placeholder, or only restating the action or verification plan); `receipt --lesson`, checked **before** the verification runs so a refusal records nothing and leaves the authorization unspent; `synthesize` lists receipts it did not promote; `knowledge` prints lessons labelled as the agent's claim. The five skill copies say to use it and `skills_sync_test` requires that. Docs updated: `docs/knowledge-model.md` ("What a lesson is", including the prompt-injection risk), `docs/mvp.md`, `RESULTS.md`, `plugins/uigates/core/README.md`.
 
-**Not done. In this order:**
+**Tests.** `core/lesson_test.ts` (19) and seven new tests in `cli/cli_test.ts`; `cli_test`'s `cycle` helper now passes a lesson. **Mutation-tested: 42 mutations across `synthesizer.ts` and `main.ts`, all killed, run against a green baseline**, and each of the five skill copies was broken three ways against the sync test. Two things the first pass exposed: a restatement check that no test could fail (the test's action was already lowercase and unpunctuated), and an existing evidence-tamper test that would have passed for the wrong reason once lesson-less receipts stopped being promoted (its receipt now carries a lesson).
 
-1. **CLI, `plugins/uigates/cli/main.ts`.**
-   - Import `lessonProblem`; add `lesson: { type: 'string' }` to `parseArgs`; add `[--lesson <text>]` to the `receipt` line of `HELP`.
-   - In `case 'receipt'`, collapse whitespace in the lesson and call `lessonProblem(lesson, authorization.action, proposal.verificationPlan)` **before `runVerification`**. A receipt is one-shot per authorization, and the verification command has side effects, so a bad lesson must fail before anything runs and must not burn the authorization.
-   - Add `...(lesson ? { lesson } : {})` to the receipt object. Print `Lesson: ...`, or, when none was given, say the receipt will not be promoted and that a lesson can only be stated when the receipt is recorded (a receipt cannot be amended).
-   - `case 'synthesize'`: construct with `{ requireLesson: true }`, then print each `synth.getUnpromoted()` entry with how to state one next time. Leave the `approve` and `retire` constructions alone.
-   - `printKnowledge`: print each pack's lessons, labelled as the agent's claim.
-2. **Tests.**
-   - `cli/cli_test.ts`: its `cycle` helper records receipts with no lesson and many tests expect lessons to appear, so make `cycle` pass a valid `--lesson` (for example "wrap the writes in one transaction so a failure rolls the whole change back"; it must not be a substring of the action text or verification plan). Then run the file and fix whatever else assumed lesson-less promotion.
-   - New CLI tests: a lesson is stored on the receipt and shown by `uig knowledge`; a receipt without one is recorded but not promoted and `synthesize` says so; each rejection (too short, restates the action, restates the verification plan, placeholder, too long) fails **without running the verification or creating a receipt**; a multi-line lesson is collapsed and a leading `#` cannot open a heading in the pack file; a failure still contradicts an existing lesson; a second intent's different lesson is added (most recent three kept).
-   - New `core/lesson_test.ts` for the library: `requireLesson` off by default (old behaviour), on = no lesson means not promoted and listed by `getUnpromoted()`; use `'unverified'` authority and `evidenceVerifier: () => true` as the other synthesizer tests do. Register both in `package.json` `test:core`.
-   - **Mutation-test them** (see gotchas): remove the `requireLesson` check, and each `lessonProblem` branch, and confirm a test fails each time.
-3. **Skill copies (five):** `skills/uig`, `skills/ui-gates`, `.claude/skills/uig`, `.agents/skills/uig`, `plugins/uigates/skills/uig`. Add a sentence: state what the next agent should know with `--lesson` when recording the receipt; a receipt without one is verified but teaches nothing, and cannot be given one later; it must say more than the action title. The long copies have the receipt step around line 31 and 50; the short ones have an `Engine:` line. Add a matching regex to `ESSENTIALS` in `plugins/uigates/core/skills_sync_test.ts`, and confirm the test fails when one copy drops it.
-4. **Docs:** `docs/knowledge-model.md` (what a lesson now is); the "What it models" table in `plugins/uigates/core/README.md`; in `docs/mvp.md` change the "3, 9: lessons with no value filter | Not changed" row to describe this; in `RESULTS.md` mark the open decision as implemented and **not yet tested with a real agent**.
-5. Full suite, then commit.
-
-**One risk to state in the docs and keep in mind.** A lesson is agent-written text that future agents read into their context, which makes it a prompt-injection surface. It is flattened to one line and truncated like every other field, and the pack labels it as an unverified claim, but nothing checks the advice is sound.
+**Still true.** A lesson is agent-written text later agents read, so it is a prompt-injection surface: flattened, truncated and labelled, not verified. Reuse is still matched on exact action text. No real agent has stated a lesson yet.
 
 ## The second trial: planned, not prepared
 
@@ -96,7 +82,7 @@ Open, for the user:
 
 - The **hook has not run in a live Claude Code session**, and the plugin's hook config is not covered by `claude plugin validate` output (it reported only the manifest).
 - The `claude` CLI login here is **expired** (`OAuth session expired`). Headless probes fail; do not try to work around it. The user can `/login` in their own terminal.
-- The `--lesson` change is unfinished and untested with a real agent.
+- The `--lesson` change is finished and mutation-tested, but no real agent has used it.
 - No GitLab runner or CI linter has run the CI change from task 3.
 - The task 1 to 3 results are n = 1: one model (`claude-sonnet-5`), one repo, one operator, one deviation (tasks 2 and 3 in one session) and one directive intervention (task 1).
 
@@ -119,7 +105,7 @@ The user wants results scored from records and independent checks, not from an a
 
 ```bash
 cd ~/Documents/Git/violetek/uigates
-npm run typecheck && npm test                          # 102 tests at 797b104
+npm run typecheck && npm test                          # 128 tests
 npx tsx --test plugins/uigates/cli/audit_test.ts       # one file
 claude plugin validate plugins/uigates                 # manifest only
 
@@ -135,4 +121,4 @@ ls ~/.claude/projects/-Users-ornelastechnologies-Documents-Git-uig-trials-vae-tr
 
 ## Kickoff message for the new session
 
-> Read `evaluations/vae-mvp-1/HANDOFF.md`, then `evaluations/vae-mvp-1/RESULTS.md` and `docs/mvp.md`. Verify the state it describes with `git log`, `git status` and `npm test`. Then finish the `--lesson` change (section "The unfinished change"), mutation-testing each new test, and stop for review before preparing the second trial.
+> Read `evaluations/vae-mvp-1/HANDOFF.md`, then `evaluations/vae-mvp-1/RESULTS.md` and `docs/mvp.md`. Verify the state it describes with `git log`, `git status` and `npm test`. Then prepare the second trial (section "The second trial"), smoke-testing the hook before scoring anything.

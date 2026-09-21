@@ -22,6 +22,7 @@ The Markdown skill itself still does not execute anything: an agent has to choos
 | On a delta, return to planning before retrying | `GovernanceEngine` (needs `taskId`, `receipts`) | `promises_test` D |
 | Skill copies carry the same essentials, including the engine guidance | (docs) | `skills_sync_test` |
 | Across separate processes: authority is issued by the engine, evidence is produced by the tool, a receipt spends its authorization once, a delta forces a replan, risk persists, gated work cannot be self-approved | `Runtime`, `cli/main.ts` | `cli_test` |
+| Only a receipt that states a lesson (`receipt --lesson`) is promoted; the lesson is the agent's unverified claim, checked only for length, placeholders and restating the title, and refused before the verification runs | `CESynthesizer` (`requireLesson`, `lessonProblem`), `cli/main.ts` | `lesson_test`, `cli_test` |
 | Gate-class resources (CI, dependencies, deployment, secrets, settings) need a principal at any declared impact | `GateClass`, `GovernanceEngine` | `gate_class_test` |
 | A denial says what kind it is: only a protected record is a true prohibition; out-of-domain, expired and replan denials can be fixed | `GovernanceEngine` (`denial`), `cli/main.ts` | `denial_kinds_test`, `cli_test` |
 | A finished session can be scored against the records: uncovered or unverified changes, gate-class changes under delegated authority, altered or contradicted evidence, verification whose logic is not in the record | `cli/audit.ts` | `audit_test` |
@@ -48,7 +49,7 @@ npm run typecheck
 npm test                # everything below, as CI runs it
 ```
 
-Individual files, for example `npx tsx plugins/uigates/core/promises_test.ts` (documented promises hold in code), `synthesis_pressure_test.ts` (adversarial receipts and learning), `arcade_pressure_test.ts` (two real games through the full lifecycle), `skills_sync_test.ts` (skill copies stay consistent), `npx tsx --test plugins/uigates/core/learning_regression_test.ts` (independent audit regressions), `npx tsx --test plugins/uigates/cli/cli_test.ts` (the CLI across processes), and `node --test plugins/uigates/learning/learning.test.mjs` (evidence and certification).
+Individual files, for example `npx tsx plugins/uigates/core/promises_test.ts` (documented promises hold in code), `synthesis_pressure_test.ts` (adversarial receipts and learning), `arcade_pressure_test.ts` (two real games through the full lifecycle), `skills_sync_test.ts` (skill copies stay consistent), `npx tsx --test plugins/uigates/core/learning_regression_test.ts` (independent audit regressions), `npx tsx --test plugins/uigates/cli/cli_test.ts` (the CLI across processes), `npx tsx --test plugins/uigates/core/lesson_test.ts` (lessons on receipts and packs), and `node --test plugins/uigates/learning/learning.test.mjs` (evidence and certification).
 
 The old arcade/compounding results use scripted workers. They show receipt → lesson → next-task mechanics,
 not coding-agent efficiency. `cli_test` proves the engine's rules hold when driven as a real agent would drive it; it does not show that an agent learns from the lessons. That needs a real-agent experiment; see the roadmap.

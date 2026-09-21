@@ -4,7 +4,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { parseArgs } from 'util';
 import { Runtime } from '../core/Runtime';
-import { CESynthesizer, loadKnowledge } from '../intelligence/ce/synthesizer';
+import { CESynthesizer, lessonProblem, loadKnowledge } from '../intelligence/ce/synthesizer';
 import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
 import type { DenialKind } from '../core/GovernanceEngine';
 import { audit, AuditError, failed, formatReport } from './audit';
@@ -26,8 +26,10 @@ const HELP = `UI-GATES engine CLI
             --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>]
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
   uig authorize <proposalId> [--approved-by <principal>]
-  uig receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>]
-  uig receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None>
+  uig receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>]
+  uig receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
+            --lesson is what the next agent should know that the action's title does not say. Only a receipt
+            that carries one is promoted to a lesson, and it can only be stated here: a receipt cannot be amended.
   uig synthesize <intentId>
   uig knowledge
   uig approve knowledge|canon "<action>" --principal <id>
@@ -140,7 +142,7 @@ async function main(): Promise<void> {
       action: { type: 'string' }, resource: { type: 'string' }, impact: { type: 'string' },
       rationale: { type: 'string' }, risk: { type: 'string' }, verify: { type: 'string' }, task: { type: 'string' },
       'replan-after': { type: 'string' }, 'root-cause': { type: 'string' }, revision: { type: 'string' },
-      run: { type: 'string' }, 'timeout-sec': { type: 'string' },
+      run: { type: 'string' }, 'timeout-sec': { type: 'string' }, lesson: { type: 'string' },
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
     },
@@ -277,6 +279,13 @@ async function main(): Promise<void> {
         return fail(`Authorization ${authorization.id} already has a receipt. Each authorization covers one execution; propose again (with a replan, if it ended in a delta).`);
       }
 
+      // Checked before anything runs: a receipt is one-shot per authorization and the verification command has side effects.
+      const lesson = v.lesson === undefined ? '' : v.lesson.replace(/\s+/g, ' ').trim();
+      if (v.lesson !== undefined) {
+        const problem = lessonProblem(lesson, authorization.action, proposal.verificationPlan);
+        if (problem) fail(`Lesson refused, and nothing was run or recorded: ${problem}. Re-run with a better --lesson, or without one to record the receipt with no lesson.`);
+      }
+
       const id = newId('rec');
       let evidence: string[];
       let actualOutcome: string;
@@ -309,6 +318,7 @@ async function main(): Promise<void> {
         evidence,
         verifiedAt: new Date(),
         ...(proposal.taskId ? { taskId: proposal.taskId } : {}),
+        ...(lesson ? { lesson } : {}),
       };
       const verdict = rt.gov.ledger.admitReceipt(receipt);
       if (!verdict.ok) return fail(`Receipt refused: ${verdict.reason}`);
@@ -317,6 +327,9 @@ async function main(): Promise<void> {
       console.log(`Outcome: ${receipt.actualOutcome}`);
       console.log(`Delta: ${receipt.delta}`);
       console.log(`Evidence: ${receipt.evidence.join(', ')}`);
+      console.log(lesson
+        ? `Lesson: ${lesson}`
+        : 'Lesson: none. This receipt will not be promoted to a lesson, and one can only be stated when the receipt is recorded (a receipt cannot be amended).');
       if (delta.trim().toLowerCase() !== 'none') {
         console.log(`Next: return to planning. A retry needs: uig propose ... ${proposal.taskId ? `--task ${proposal.taskId} ` : ''}--replan-after ${receipt.id} --root-cause "<why>" --revision "<what changes>"`);
         process.exitCode = 1;
@@ -329,9 +342,10 @@ async function main(): Promise<void> {
     case 'synthesize': {
       const intentId = need(positionals[0], 'intentId (first argument)');
       if (!rt.state.getIntent(intentId)) return fail('Intent not found.');
-      const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger);
+      const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger, { requireLesson: true });
       await synth.synthesize(intentId);
       for (const r of synth.getRejections()) console.log(`Rejected receipt ${r.receiptId}: ${r.reason}`);
+      for (const u of synth.getUnpromoted()) console.log(`Not promoted: ${u.receiptId} (${u.action}) stated no lesson. Next time, record the receipt with --lesson "<what the next agent should know>".`);
       printKnowledge(root);
       for (const e of synth.getEscalations()) {
         console.log(`Needs the principal: ${e.kind} at ${e.level}: ${e.action}`);
@@ -394,6 +408,7 @@ function printKnowledge(root: string): void {
     const flags = [p.candidate ? 'candidate for Knowledge' : '', p.needsPrincipal ? 'needs principal' : ''].filter(Boolean).join(', ');
     console.log(`  [${p.level}/${p.status}] ${p.action}  (${p.intents.length} intent${p.intents.length === 1 ? '' : 's'}${flags ? `; ${flags}` : ''})`);
     if (p.failureModes.length) console.log(`    failures: ${p.failureModes.join(' | ')}`);
+    for (const l of p.lessons) console.log(`    lesson (the agent's claim, not verified): ${l}`);
   }
 }
 
