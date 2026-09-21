@@ -134,3 +134,17 @@ The transcript shows two messages, not one: that reply (19:17:50, pasted), then 
 ## After the trial: findings 4 and 10 are now detected
 
 `uig audit` gained a check for verification whose logic is not in the record: a `--run` command that executes a script outside the project, or one that no longer exists in the working tree or the base commit. Run over the trial's own records (`--base 111ed08`), it flags exactly the three receipts behind those findings (task 1's two harness runs, task 3's `verify_ci.sh`) and, as designed, stays silent on task 1's cleanup receipt, which only tests that the deleted script is gone. It is a warning, not a failure: the checks were good, but nobody can re-run them. Scores above were taken before this check existed; they are unchanged.
+
+Other changes made in response to the findings are listed in [docs/mvp.md](../../docs/mvp.md) ("Changes made after the trial"): denial kinds (finding 2), skill guidance on scripts and on authorizing before writing (findings 1, 4, 7, 10), and an opt-in write-time hook (finding 7). The hook was replayed over this trial's own records with time rewound to each real Write and Edit: it allowed the three compliant writes (task 1's validator edits and its harness) and blocked exactly the two late ones in task 2. It cannot see Bash writes, which is how the task 3 CI edit and the task 2 refactor were made.
+
+## Open decision: what should become a lesson (findings 3 and 9)
+
+After three tasks the ledger holds seven lessons, and most are process (`delete the temporary harness`, `document the validator in AGENTS.md`, `refactor validate_creature_catalog.py`). The synthesizer promotes every verified receipt and names the lesson after whatever action text the agent chose. Nothing has been changed, because this alters what counts as knowledge. Options, with a recommendation:
+
+| Option | What it does | Cost |
+| --- | --- | --- |
+| A. Agent tags each action's kind (feature, cleanup, docs, ...) and cleanup is not promoted | Filters housekeeping | The agent decides what is housekeeping, and tags are as reliable as the agent |
+| **B. (recommended) An optional `--lesson "<what the next agent should know>"` on `receipt`; only receipts that carry one are promoted, and the lesson text is what is stored** | Makes reuse deliberate: a receipt with nothing to teach teaches nothing, and the stored lesson is what a later agent reads instead of an action title | Small: one field on `Receipt`, one flag, one synthesizer rule. Still the agent's judgment, but stated, hash-bound to the evidence, and reviewable by the principal |
+| C. Semantic matching, so similar lessons combine and a candidate can form | Fixes exact-text matching (why no candidate formed) | Large: needs embeddings or a model call, and a way to test it. Worth doing only after B shows the ledger holds lessons worth matching |
+
+B first, then look at what the next trial's ledger contains before deciding on C.

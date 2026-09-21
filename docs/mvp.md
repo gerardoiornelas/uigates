@@ -119,6 +119,18 @@ A run is **void, not failed**, if it stops for a reason unrelated to the agent's
 
 Jev or any model-based classifier and its enforcement, pre-tool-use hooks and middleware, model routing, the 72-run synthesis experiment with control and placebo arms, signed records, an approval UI, Graphify refresh, and cross-project operation.
 
+## Changes made after the trial
+
+Each traces to a finding in [RESULTS.md](../evaluations/vae-mvp-1/RESULTS.md). None changes what the trial scored.
+
+| Finding | Change |
+| --- | --- |
+| 4, 10: verification logic outside the record | `uig audit` warns when a `--run` command executes a script outside the project or one that no longer exists |
+| 2: `prohibited` is overloaded | Denials carry a kind; the CLI says "DENIED (outside the authorized domain)" with what to do next, and only a protected record is called a prohibition. An absolute or escaping path says it can never be inside a domain |
+| 1, 4, 10: scratch scripts, temp directories | The five skill copies tell the agent to keep verification scripts inside the project and leave them until the receipt is recorded; the sync test requires it |
+| 7: authorization after the write | The skill says to authorize before writing. An opt-in write-time hook (`uig enforce on`) refuses a Write, Edit, MultiEdit or NotebookEdit no unspent authorization covers. Replayed over the trial's real records, with time rewound to each real write, it allowed the three compliant writes and blocked exactly the two late ones. It cannot see writes made through Bash |
+| 3, 9: lessons with no value filter | **Not changed.** See the open decision in RESULTS.md |
+
 ## Findings from setting up the trial
 
 1. **`npx uig help` could run someone else's package. Fixed 2026-09-21.** The skill told agents to detect the CLI with `npx uig help`. Where the CLI is not installed, npx resolves `uig` from the npm registry, and an unrelated package of that name exists (version 0.0.0, modified 2022; not run). All five skill copies, `docs/namespace.md` and the sync test now use `npx --no-install uig help`, and the README and namespace docs say why. Verified: with no shim present the command fails with "could not determine executable to run" and installs nothing; with the shim it resolves. The trial worktree carries the fixed skill.

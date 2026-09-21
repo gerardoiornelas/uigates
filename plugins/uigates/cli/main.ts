@@ -6,7 +6,9 @@ import { parseArgs } from 'util';
 import { Runtime } from '../core/Runtime';
 import { CESynthesizer, loadKnowledge } from '../intelligence/ce/synthesizer';
 import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
+import type { DenialKind } from '../core/GovernanceEngine';
 import { audit, AuditError, failed, formatReport } from './audit';
+import { enforcementOn, runHook } from './hook';
 
 /**
  * `uig` — the engine CLI an agent uses to make a /uig session real: intents, proposals and
@@ -34,6 +36,11 @@ const HELP = `UI-GATES engine CLI
   uig audit [--base <commit>] [--intent <id>] [--json]
             score a session: do the changes since <commit> (default HEAD) match what was authorized and verified?
             Read-only; exits 1 on any FAIL. It reads the records, so it shows consistency, not good behaviour.
+
+  uig enforce [on|off]
+            when on, the Claude Code hook (uig hook pre-write) refuses a file edit that no unspent authorization covers.
+            Off by default. It sees only the file-editing tools, not writes made through Bash.
+  uig hook pre-write    reads a PreToolUse payload on stdin; exit 2 blocks the edit, any other exit allows it
 
   --root <dir>    project root (default: UIG_ROOT or the current directory)
 
@@ -102,6 +109,17 @@ function runVerification(rt: Runtime, receiptId: string, command: string, timeou
   return { ref: evidenceRef(rt.root, file), exitCode, timedOut };
 }
 
+/** What a denial means and what to do next, by kind. Only 'protected-record' is a true prohibition. */
+const DENIAL_HELP: Record<DenialKind, { label: string; next: string }> = {
+  'outside-domain': { label: 'outside the authorized domain', next: 'This is not a prohibition. Propose a project-relative path inside the intent\'s domain (temporary and verification files belong in the project too), or ask the principal to start a new intent with a wider domain.' },
+  'protected-record': { label: 'prohibited: protected record', next: 'UI-GATES records are written only by the uig CLI and cannot be altered through the workflow. Do not retry.' },
+  'expired': { label: 'the intent has expired', next: 'Ask the principal for a new intent.' },
+  'wrong-actor': { label: 'actor not authorized under this intent', next: 'Ask the principal to add the actor to the intent, or start a new one.' },
+  'wrong-intent': { label: 'proposal belongs to a different intent', next: 'Propose under the intent it belongs to.' },
+  'replan-required': { label: 'a replan is required', next: 'Return to planning, then propose again with --replan-after, --root-cause and --revision.' },
+  'policy': { label: 'a policy refused it', next: 'Ask the principal.' },
+};
+
 function describeAuthorization(a: Authorization): string {
   return `${a.id}  ${a.state}  ${a.action} -> ${a.resource}`;
 }
@@ -129,6 +147,27 @@ async function main(): Promise<void> {
   });
   const root = path.resolve(v.root ?? process.env.UIG_ROOT ?? process.cwd());
   if (!fs.existsSync(root)) fail(`Project root does not exist: ${root}`);
+
+  // The hook runs on every file edit and must not fail closed: it handles its own errors and never reaches the catch below.
+  if (command === 'hook') {
+    const hookRoot = path.resolve(v.root ?? process.env.UIG_ROOT ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd());
+    let input = '';
+    try { input = fs.readFileSync(0, 'utf8'); } catch { /* no stdin: treated as an empty payload */ }
+    const result = runHook(hookRoot, input);
+    if (result.stderr) console.error(result.stderr);
+    process.exitCode = result.exit;
+    return;
+  }
+
+  if (command === 'enforce') {
+    const marker = path.join(root, '.uig', 'enforce');
+    const want = positionals[0];
+    if (want === 'on') { fs.mkdirSync(path.dirname(marker), { recursive: true }); fs.writeFileSync(marker, 'on\n'); }
+    else if (want === 'off') fs.rmSync(marker, { force: true });
+    else if (want !== undefined) fail('Usage: uig enforce [on|off]');
+    console.log(`Enforcement: ${enforcementOn(root) ? 'on' : 'off'}${process.env.UIG_ENFORCE === '1' ? ' (UIG_ENFORCE=1)' : ''}`);
+    return;
+  }
 
   // Audit is read-only, so it runs before Runtime, which creates .uig/ and rebuilds engine state.
   if (command === 'audit') {
@@ -195,9 +234,10 @@ async function main(): Promise<void> {
       rt.state.saveProposal(proposal);
       const evaluation = rt.gov.evaluate(proposal, intent);
       console.log(`Proposal: ${proposal.id}`);
-      console.log(`Authority: ${evaluation.suggestedState}${evaluation.denied ? ' (DENIED)' : ''}`);
+      const help = evaluation.denied && evaluation.denial ? DENIAL_HELP[evaluation.denial] : undefined;
+      console.log(evaluation.denied ? `Authority: DENIED (${help?.label ?? 'not allowed'})` : `Authority: ${evaluation.suggestedState}`);
       console.log(`Why: ${evaluation.rationale}`);
-      if (evaluation.denied) { process.exitCode = 1; return; }
+      if (evaluation.denied) { if (help) console.log(`Next: ${help.next}`); process.exitCode = 1; return; }
       console.log(evaluation.suggestedState === 'gated'
         ? 'Next: ask the principal. Only after they approve, run: uig authorize ' + proposal.id + ' --approved-by ' + intent.principalId
         : 'Next: uig authorize ' + proposal.id);
@@ -212,7 +252,7 @@ async function main(): Promise<void> {
       const existing = rt.state.listAuthorizations().find(a => a.proposalId === proposal.id);
       if (existing) { console.log(`Already authorized: ${describeAuthorization(existing)}`); return; }
       const evaluation = rt.gov.evaluate(proposal, intent);
-      if (evaluation.denied) { console.error(`Denied: ${evaluation.rationale}`); process.exitCode = 1; return; }
+      if (evaluation.denied) { console.error(`Denied (${(evaluation.denial && DENIAL_HELP[evaluation.denial].label) ?? 'not allowed'}): ${evaluation.rationale}`); process.exitCode = 1; return; }
       if (evaluation.suggestedState === 'gated' && v['approved-by'] !== intent.principalId) {
         console.error(`Gated: ${evaluation.rationale}`);
         console.error(`Ask ${intent.principalId} and wait for a clear yes in this conversation. Then re-run with --approved-by ${intent.principalId}. The agent may not approve its own gated action.`);

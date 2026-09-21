@@ -86,6 +86,7 @@ npx uig authorize <proposalId>                     # delegated work; gated work 
 npx uig receipt <authorizationId> --run "npm test" # the CLI runs the command and hashes the output as evidence
 npx uig synthesize <intentId> && npx uig knowledge
 npx uig audit --base <commit>                      # score a finished session against the records; read-only
+npx uig enforce on                                 # opt in: refuse a file edit no unspent authorization covers (Claude Code hook)
 ```
 
 Use `npx --no-install uig ...` if you are not sure the package is installed: a plain `npx uig` can fetch an unrelated package of the same name from npm. Each call is a separate process, so the engine rebuilds its authority ledger, receipts and cumulative risk from the write-once records in `.uig/`. Synthesis is `CESynthesizer`: only receipts traceable to issued authority, with hash-bound evidence, become lessons; reuse across distinct intents makes a candidate; a principal promotes it.

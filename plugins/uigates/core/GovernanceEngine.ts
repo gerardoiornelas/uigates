@@ -23,10 +23,19 @@ export const ResourceProtectionPolicy: Policy = {
   }
 };
 
+/**
+ * Why a proposal was denied. `suggestedState` is 'prohibited' for every denial, which is the state
+ * the architecture reserves for what can never be authorized; most denials are not that. A proposal
+ * outside the domain, from an expired intent, or missing a replan can become fine, so an agent must
+ * be able to tell those from a true prohibition.
+ */
+export type DenialKind = 'wrong-intent' | 'expired' | 'wrong-actor' | 'replan-required' | 'protected-record' | 'outside-domain' | 'policy';
+
 export interface Evaluation {
   suggestedState: AuthorityState;
   rationale: string;
   denied: boolean;
+  denial?: DenialKind;
 }
 
 // Authority and audit records: nothing that acts under an intent may alter them.
@@ -73,17 +82,17 @@ export class GovernanceEngine {
   }
 
   private decide(proposal: Proposal, intent: Intent): Evaluation {
-    const deny = (rationale: string): Evaluation => ({ suggestedState: 'prohibited', rationale, denied: true });
+    const deny = (denial: DenialKind, rationale: string): Evaluation => ({ suggestedState: 'prohibited', rationale, denied: true, denial });
 
     // "Is this actor authorized ... under this intent, right now?"
     if (proposal.intentId !== intent.id) {
-      return deny(`Proposal ${proposal.id} belongs to intent ${proposal.intentId}, not ${intent.id}.`);
+      return deny('wrong-intent', `Proposal ${proposal.id} belongs to intent ${proposal.intentId}, not ${intent.id}.`);
     }
     if (!Number.isFinite(new Date(intent.expiry).getTime()) || new Date(intent.expiry).getTime() <= Date.now()) {
-      return deny(`Intent ${intent.id} has expired; it grants no authority.`);
+      return deny('expired', `Intent ${intent.id} has expired; it grants no authority.`);
     }
     if (intent.authorizedActors && !intent.authorizedActors.includes(proposal.actorId)) {
-      return deny(`Actor ${proposal.actorId} is not authorized to act under intent ${intent.id}.`);
+      return deny('wrong-actor', `Actor ${proposal.actorId} is not authorized to act under intent ${intent.id}.`);
     }
 
     // "On a delta, return to Plan": a retry must carry the replan that answers the last failure.
@@ -93,7 +102,7 @@ export class GovernanceEngine {
         const r = proposal.replan;
         const stated = (v?: string) => typeof v === 'string' && v.trim().length >= 3 && !/^(todo|tbd|n\/a|\.{3})$/i.test(v.trim());
         if (!r || r.after !== last.id || !stated(r.rootCause) || !stated(r.revision)) {
-          return deny(`Task ${proposal.taskId} ended with a delta ("${last.delta}", receipt ${last.id}). Return to planning: a retry must carry a replan citing that receipt, the root cause, and the revision.`);
+          return deny('replan-required', `Task ${proposal.taskId} ended with a delta ("${last.delta}", receipt ${last.id}). Return to planning: a retry must carry a replan citing that receipt, the root cause, and the revision.`);
         }
       }
     }
@@ -109,7 +118,7 @@ export class GovernanceEngine {
 
     // Prohibited: altering authority or audit records, even inside an otherwise wide domain.
     if (AUDIT_RECORDS.test(resource)) {
-      return deny(`Resource ${proposal.resource} is an authority or audit record; it cannot be altered through the workflow.`);
+      return deny('protected-record', `Resource ${proposal.resource} is an authority or audit record; it cannot be altered through the workflow.`);
     }
 
     // Domains are project-relative path prefixes, never substrings. '/' means
@@ -121,7 +130,11 @@ export class GovernanceEngine {
     });
 
     if (!isWithinDomain) {
-      return deny(`Resource ${proposal.resource} is outside the authorized domain.`);
+      // An absolute path or a '..' escape is never inside a project-relative domain, whatever the domain says.
+      const never = escapesRoot || path.posix.isAbsolute(resource) || /^[a-z]:/i.test(resource);
+      return deny('outside-domain', never
+        ? `Resource ${proposal.resource} is not a project-relative path: absolute paths and '..' escapes are never inside a domain.`
+        : `Resource ${proposal.resource} is outside the authorized domain.`);
     }
 
     if (UIG_STATE.test(resource)) {
@@ -146,7 +159,7 @@ export class GovernanceEngine {
     // 3. Policy Evaluation
     for (const policy of this.policies) {
       if (!policy.rule(proposal, intent)) {
-        return deny(`Policy violation: ${policy.name}`);
+        return deny('policy', `Policy violation: ${policy.name}`);
       }
     }
 

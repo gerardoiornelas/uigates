@@ -235,3 +235,31 @@ test('an intent needs a principal, a domain and success evidence', t => {
   assert.match(p.uig('start', 'g', '--success', 'x').err, /Missing --domain/);
   assert.match(p.uig('start', 'g', '--domain', 'src/').err, /Missing --success/);
 });
+
+test('an out-of-domain proposal is DENIED with what to do next, not just called prohibited', t => {
+  const p = project(t);
+  const intent = startIntent(p);
+  const r = propose(p, intent, { resource: 'docs/readme.md' });
+  assert.equal(r.status, 1);
+  assert.match(r.out, /Authority: DENIED \(outside the authorized domain\)/);
+  assert.match(r.out, /Next: This is not a prohibition\. Propose a project-relative path inside the intent's domain/);
+  assert.doesNotMatch(r.out, /Authority: prohibited/);
+});
+
+test('an absolute scratch path is refused with the reason it can never be in a domain', t => {
+  const p = project(t);
+  const intent = startIntent(p);
+  const r = propose(p, intent, { resource: '/private/tmp/scratch/verify.py' });
+  assert.equal(r.status, 1);
+  assert.match(r.out, /DENIED \(outside the authorized domain\)/);
+  assert.match(r.out, /not a project-relative path: absolute paths and '\.\.' escapes are never inside a domain/);
+});
+
+test('a protected record is the one denial still called a prohibition', t => {
+  const p = project(t);
+  const intent = p.id(p.uig('start', 'x', '--domain', '/', '--success', 'y'), 'Intent');
+  const r = propose(p, intent, { resource: '.uig/receipts/rec_1.json' });
+  assert.equal(r.status, 1);
+  assert.match(r.out, /DENIED \(prohibited: protected record\)/);
+  assert.match(r.out, /Do not retry/);
+});

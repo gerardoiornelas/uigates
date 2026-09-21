@@ -96,7 +96,7 @@ export function changedFiles(root: string, base: string): ChangedFile[] {
   return [...out.values()].filter(f => !/^\.uig(\/|$)/.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function readRecords<T>(root: string, dir: string, findings: Finding[]): T[] {
+export function readRecords<T>(root: string, dir: string, findings: Finding[]): T[] {
   const full = path.join(root, '.uig', dir);
   if (!fs.existsSync(full)) return [];
   const out: T[] = [];
