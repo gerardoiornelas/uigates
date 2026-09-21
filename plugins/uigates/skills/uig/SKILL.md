@@ -15,7 +15,7 @@ Apply the UI-GATES workflow:
 
 Stop and ask the principal when an action is gated or prohibited, material constraints are unknown, authoritative knowledge conflicts, or required verification fails or cannot run.
 
-Engine: if `npx uig help` works, record through the UI-GATES engine (`uig start`, `propose`, `authorize`, `receipt`, `synthesize`, `knowledge`). It enforces authority, runs your verification command and stores the output as evidence (`receipt --run`), and applies the promotion ladder. Never pass `--approved-by` or run `approve` or `retire` yourself: those are the principal's decisions, taken only from their explicit yes in conversation. Without the engine, record the same fields in markdown and report that synthesis was not engine-verified.
+Engine: if `npx --no-install uig help` works, record through the UI-GATES engine (`uig start`, `propose`, `authorize`, `receipt`, `synthesize`, `knowledge`). It enforces authority, runs your verification command and stores the output as evidence (`receipt --run`), and applies the promotion ladder. Never pass `--approved-by` or run `approve` or `retire` yourself: those are the principal's decisions, taken only from their explicit yes in conversation. Without the engine, record the same fields in markdown and report that synthesis was not engine-verified.
 
 Authority states are **observe**, **delegated**, **gated**, and **prohibited**. The governing rule is: reasoning proposes; authority decides; verified work synthesizes into reusable knowledge.
 

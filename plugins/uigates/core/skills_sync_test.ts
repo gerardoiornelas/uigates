@@ -29,7 +29,7 @@ const ESSENTIALS: [name: string, test: RegExp][] = [
   ['no retry on a delta without returning to planning', /(replan|return(ing)? to \**(plan|planning|Discover and plan))/i],
   ['promotion ladder, with the canonical spelling', /Ephemeral → Task → Decision → Knowledge → Canon/],
   ['stop and ask the principal on gated, prohibited, unknown or failing work', /Stop and ask the principal/],
-  ['engine recording, with the no-self-approval rule', /npx uig help[\s\S]*(approved-by|approve)[\s\S]*(principal's|principal)/],
+  ['engine recording, with the no-self-approval rule', /npx --no-install uig help[\s\S]*(approved-by|approve)[\s\S]*(principal's|principal)/],
   ['honest fallback without the engine', /not engine-verified/],
   ['completion line', /UI-GATES COMPLETE — outcome verified, provenance recorded, next work grounded\./],
 ];

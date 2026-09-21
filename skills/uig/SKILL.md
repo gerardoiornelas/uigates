@@ -23,7 +23,7 @@ Reasoning proposes. Authority decides. Verified work synthesizes into reusable k
 
 ## Recording with the engine
 
-If the UI-GATES engine CLI is installed (`npx uig help` succeeds), record the workflow through it instead of prose. State lives in `.uig/`; each call is a separate process and the engine rebuilds its authority ledger from those records.
+If the UI-GATES engine CLI is installed (`npx --no-install uig help` succeeds), record the workflow through it instead of prose. State lives in `.uig/`; each call is a separate process and the engine rebuilds its authority ledger from those records.
 
 1. `uig start "<goal>" --domain <path> --success <evidence>` bounds the intent (principal, delegated domain, expiry).
 2. `uig propose <intentId> --action … --resource … --impact low|medium|high --rationale … --risk … --verify …` returns **delegated**, **gated**, or **DENIED**. Stop on denied.

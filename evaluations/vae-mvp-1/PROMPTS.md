@@ -7,9 +7,9 @@ Frozen before the first run. Do not edit a prompt after a session has used it; i
 | Item | Value |
 | --- | --- |
 | Worktree | `~/Documents/Git/uig-trials/vae-trial-1`, branch `trial/uig-mvp-1` |
-| Task 1 audit base | `8760dca` ("Trial setup"; verifiers pass; skill installed; `.uig/` absent) |
+| Task 1 audit base | `d85b6b6` ("Trial setup"; verifiers pass; skill installed with `npx --no-install`; `.uig/` absent) |
 | Skill | The **condensed Claude Code copy** (`.claude/skills/uig/SKILL.md`), which is what a Claude Code user gets. It names the CLI commands but leaves flag details to `uig help`. This is deliberate and is part of what is tested |
-| CLI | `npx uig` resolves to a shim in the gitignored `node_modules/.bin`. Check with `npx --no-install uig help` |
+| CLI | `npx --no-install uig` resolves to a shim in the gitignored `node_modules/.bin`. Check with `npx --no-install uig help` |
 | Session | A **new** Claude Code session per task, working directory the worktree, default permission mode. Record the model and version |
 | State that carries over | `.uig/` in the worktree, so task 2 and 3 can read what task 1 synthesized. Nothing else does |
 

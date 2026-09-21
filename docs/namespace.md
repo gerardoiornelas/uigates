@@ -34,10 +34,10 @@ The skills work alone as guidance. To have `/uig` record intents, authority, rec
 
 ```bash
 npm install --save-dev github:gerardoiornelas/uigates
-npx uig help
+npx --no-install uig help
 ```
 
-Without it the skills fall back to markdown and say synthesis was not engine-verified. `.uig/` holds local runtime records; whether to commit `.uig/knowledge/` is the project's decision.
+`--no-install` matters. Without it, in a project where the package is not installed, npx resolves `uig` from the npm registry, where an unrelated package of that name exists, and may run it. With it, npx fails and the skills fall back to markdown, saying synthesis was not engine-verified. `.uig/` holds local runtime records; whether to commit `.uig/knowledge/` is the project's decision.
 
 ## Installation guidance
 
