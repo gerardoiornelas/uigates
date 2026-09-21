@@ -87,6 +87,9 @@ npx uigates receipt <authorizationId> --run "npm test" # the CLI runs the comman
 npx uigates synthesize <intentId> && npx uigates knowledge
 npx uigates audit --base <commit>                      # score a finished session against the records; read-only
 npx uigates enforce on                                 # opt in: refuse a file edit no unspent authorization covers (Claude Code hook)
+npx uigates brief --paths src/export.js            # what earlier verified work found near these files, capped at a token budget (start prints it too)
+npx uigates cost                                   # where a session's tokens went, from the agent's transcript; read-only
+npx uigates propose ... --authorize                # propose and authorize a delegated action in one call
 ```
 
 Use `npx --no-install uigates ...` if you are not sure the package is installed, so npx never installs or runs a package from the registry (it cancels instead). (`uigates` is not on npm today, but the older name `uig` is: a different, unrelated package, which is why the skills never use it.) Each call is a separate process, so the engine rebuilds its authority ledger, receipts and cumulative risk from the write-once records in `.uigates/`. Synthesis is `CESynthesizer`: only receipts traceable to issued authority, with hash-bound evidence, become lessons; reuse across distinct intents makes a candidate; a principal promotes it.
@@ -120,6 +123,7 @@ Read [evidence-backed coding-agent learning](docs/certified-learning.md) for the
 - [Knowledge model](docs/knowledge-model.md)
 - [Terminology](docs/terminology.md)
 - [Roadmap](docs/roadmap.md)
+- [Token savings: what other tools do, what is measured, what is not](docs/token-savings.md)
 - [Namespace and installation](docs/namespace.md)
 - [The `uigates` skill](skills/uigates/SKILL.md)
 - [Long-form reference](skills/uigates/references/long-form.md)

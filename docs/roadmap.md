@@ -15,8 +15,8 @@ Status as of 2026-09-19. **Done** means built and covered by a test that runs in
 | Phase | Status |
 | --- | --- |
 | 0 — Canon and skill foundation | **Done** |
-| 1 — Single-project proving loop | **Partial**: engine and CLI proven mechanically; no real-agent `/uigates` session recorded yet |
-| 2 — Evaluation and refinement | **Partial**: harness and adversarial tests built; learning effect **not supported by any completed evidence** |
+| 1 — Single-project proving loop | **Partial**: engine and CLI proven mechanically, and one real-agent trial (three tasks, one model, no control) followed the loop; the current build has not been run by a real agent |
+| 2 — Evaluation and refinement | **Partial**: harnesses and adversarial tests built, including a three-arm token A/B (`evaluations/token-ab`) tested only against a stand-in agent; learning and token savings are **not supported by any completed evidence** ([token savings](token-savings.md)) |
 | 3 — Plugin and control-plane decision | **Done**: plugin and `uigates` CLI, no central service |
 | 4 — Cross-project operation | **Not started** |
 
