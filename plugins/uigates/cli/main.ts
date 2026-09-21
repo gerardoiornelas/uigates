@@ -6,6 +6,7 @@ import { parseArgs } from 'util';
 import { Runtime } from '../core/Runtime';
 import { CESynthesizer, loadKnowledge } from '../intelligence/ce/synthesizer';
 import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
+import { audit, AuditError, failed, formatReport } from './audit';
 
 /**
  * `uig` — the engine CLI an agent uses to make a /uig session real: intents, proposals and
@@ -30,6 +31,9 @@ const HELP = `UI-GATES engine CLI
   uig approve knowledge|canon "<action>" --principal <id>
   uig retire "<action>" --principal <id>
   uig status [intentId]
+  uig audit [--base <commit>] [--intent <id>] [--json]
+            score a session: do the changes since <commit> (default HEAD) match what was authorized and verified?
+            Read-only; exits 1 on any FAIL. It reads the records, so it shows consistency, not good behaviour.
 
   --root <dir>    project root (default: UIG_ROOT or the current directory)
 
@@ -120,10 +124,25 @@ async function main(): Promise<void> {
       'replan-after': { type: 'string' }, 'root-cause': { type: 'string' }, revision: { type: 'string' },
       run: { type: 'string' }, 'timeout-sec': { type: 'string' },
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
+      base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
     },
   });
   const root = path.resolve(v.root ?? process.env.UIG_ROOT ?? process.cwd());
   if (!fs.existsSync(root)) fail(`Project root does not exist: ${root}`);
+
+  // Audit is read-only, so it runs before Runtime, which creates .uig/ and rebuilds engine state.
+  if (command === 'audit') {
+    try {
+      const report = audit(root, v.base ?? 'HEAD', v.intent);
+      console.log(v.json ? JSON.stringify(report, null, 2) : formatReport(report));
+      if (failed(report)) process.exitCode = 1;
+    } catch (error) {
+      if (error instanceof AuditError) fail(error.message);
+      throw error;
+    }
+    return;
+  }
+
   const rt = new Runtime(root);
   if (rt.orphans.length) console.warn(`Warning: ${rt.orphans.length} authorization(s) lack their proposal or intent and authorize nothing: ${rt.orphans.join(', ')}`);
 

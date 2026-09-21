@@ -85,6 +85,7 @@ npx uig propose <intentId> --action "add export" --resource src/export.js --impa
 npx uig authorize <proposalId>                     # delegated work; gated work needs the principal's yes
 npx uig receipt <authorizationId> --run "npm test" # the CLI runs the command and hashes the output as evidence
 npx uig synthesize <intentId> && npx uig knowledge
+npx uig audit --base <commit>                      # score a finished session against the records; read-only
 ```
 
 Each call is a separate process, so the engine rebuilds its authority ledger, receipts and cumulative risk from the write-once records in `.uig/`. Synthesis is `CESynthesizer`: only receipts traceable to issued authority, with hash-bound evidence, become lessons; reuse across distinct intents makes a candidate; a principal promotes it.

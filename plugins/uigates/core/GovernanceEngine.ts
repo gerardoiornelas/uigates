@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import { Proposal, Intent, AuthorityState, Authorization, Policy } from './types/primitives';
 import { AuthorityLedger } from './AuthorityLedger';
 import { ReceiptStore } from './ReceiptStore';
+import { gateClassOf } from './GateClass';
 
 /**
  * Resource Protection Policy
@@ -13,8 +14,7 @@ export const ResourceProtectionPolicy: Policy = {
   name: 'Critical Resource Protection',
   description: 'Resources listed as critical always require Gated authorization.',
   rule: (proposal, _intent) => {
-    const criticalResources = ['package.json', 'settings.json', '.env'];
-    const isCritical = criticalResources.some(res => proposal.resource.endsWith(res));
+    const isCritical = gateClassOf(path.posix.normalize(proposal.resource.replace(/\\/g, '/'))) !== null;
 
     if (isCritical && proposal.impact === 'low') {
       return false;
@@ -132,12 +132,13 @@ export class GovernanceEngine {
       };
     }
 
-    // 2. Critical Resource Override (Hard-coded Protection)
-    const criticalResources = ['package.json', 'settings.json', '.env'];
-    if (criticalResources.some(res => resource.endsWith(res))) {
+    // 2. Critical Resource Override (Hard-coded Protection). Judged on the normalized path, so
+    // 'src/../.gitlab-ci.yml' is the CI file and not something under src/.
+    const critical = gateClassOf(resource);
+    if (critical) {
       return {
         suggestedState: 'gated',
-        rationale: `Resource ${proposal.resource} is marked as CRITICAL and requires Gated authorization.`,
+        rationale: `Resource ${proposal.resource} is marked as CRITICAL (${critical}) and requires Gated authorization.`,
         denied: false
       };
     }
