@@ -9,6 +9,7 @@ import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitiv
 import type { DenialKind } from '../core/GovernanceEngine';
 import { audit, AuditError, failed, formatReport } from './audit';
 import { enforcementOn, runHook } from './hook';
+import { buildBrief, DEFAULT_BRIEF_BUDGET } from '../intelligence/ce/brief';
 import { claudeTranscriptDir, DEFAULT_WEIGHTS, formatCost, reportFor, type Usage } from './cost';
 import { envSetting, hasBothStateDirs, stateDir, stateDirName } from '../core/names';
 
@@ -22,7 +23,7 @@ class UsageError extends Error {}
 
 const HELP = `UI-GATES engine CLI
 
-  uigates start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...]
+  uigates start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...] [--no-brief]
             [--principal <id>] [--expires-in-hours <n> | --expires <ISO date>] [--actor <id>...]
   uigates propose <intentId> --action <text> --resource <path> --impact low|medium|high
             --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>]
@@ -37,6 +38,8 @@ const HELP = `UI-GATES engine CLI
   uigates approve knowledge|canon "<action>" --principal <id>
   uigates retire "<action>" --principal <id>
   uigates status [intentId]
+  uigates brief [--paths <a,b,...> | --intent <id>] [--budget <tokens>] [--json]
+            earlier verified work near those files, capped at a token budget (default 400); start prints it for its domain
   uigates cost [--transcripts <file|dir>...] [--weights input=1,cacheWrite=1.25,cacheRead=0.1,output=5] [--json]
             where a session's tokens went, from the host's transcript (Claude Code's, by default): weighted total,
             tool calls and output by kind, how much was UI-GATES commands, discovery before the first edit. Read-only.
@@ -152,6 +155,7 @@ async function main(): Promise<void> {
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
       transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
+      paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' },
     },
   });
   const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
@@ -176,6 +180,22 @@ async function main(): Promise<void> {
     else if (want !== undefined) fail('Usage: uigates enforce [on|off]');
     const viaEnv = process.env.UIGATES_ENFORCE === '1' ? ' (UIGATES_ENFORCE=1)' : process.env.UIG_ENFORCE === '1' ? ' (UIG_ENFORCE=1, the older name)' : '';
     console.log(`Enforcement: ${enforcementOn(root) ? 'on' : 'off'}${viaEnv}`);
+    return;
+  }
+
+  // Brief is read-only: it reads lessons and, for --intent, the intent's domain.
+  if (command === 'brief') {
+    const budget = v.budget === undefined ? DEFAULT_BRIEF_BUDGET : Number(v.budget);
+    if (!Number.isFinite(budget) || budget < 60) fail('--budget must be a number of tokens, at least 60.');
+    let query = (v.paths ?? '').split(',').map(x => x.trim()).filter(Boolean);
+    if (v.intent) {
+      const file = path.join(stateDir(root), 'intents', `${v.intent}.json`);
+      if (!fs.existsSync(file)) fail(`Intent ${v.intent} not found.`);
+      query = query.concat(JSON.parse(fs.readFileSync(file, 'utf8')).authorityDomain ?? []);
+    }
+    if (!query.length) fail('Name the files: --paths <a,b,...> or --intent <id>.');
+    const brief = buildBrief(root, query, budget);
+    console.log(v.json ? JSON.stringify(brief, null, 2) : brief.text);
     return;
   }
 
@@ -234,6 +254,7 @@ async function main(): Promise<void> {
       console.log(`Principal: ${intent.principalId}`);
       console.log(`Delegated domain: ${intent.authorityDomain.join(', ')}`);
       console.log(`Expires: ${new Date(intent.expiry).toISOString()}`);
+      if (!v['no-brief']) console.log(`\n${buildBrief(root, authorityDomain).text}`);
       return;
     }
 
@@ -433,6 +454,7 @@ function printKnowledge(root: string): void {
   for (const p of packs) {
     const flags = [p.candidate ? 'candidate for Knowledge' : '', p.needsPrincipal ? 'needs principal' : ''].filter(Boolean).join(', ');
     console.log(`  [${p.level}/${p.status}] ${p.action}  (${p.intents.length} intent${p.intents.length === 1 ? '' : 's'}${flags ? `; ${flags}` : ''})`);
+    if (p.paths.length) console.log(`    files: ${p.paths.join(', ')}`);
     if (p.failureModes.length) console.log(`    failures: ${p.failureModes.join(' | ')}`);
     for (const l of p.lessons) console.log(`    lesson (the agent's claim, not verified): ${l}`);
   }

@@ -39,6 +39,7 @@ interface PackState {
   contradicted: string[]; // receipt ids where the action later failed
   failureModes: string[]; // what went wrong, most recent last
   lessons: string[]; // what agents said the next agent should know, most recent last; the agent's claim, not verified
+  paths?: string[]; // where the verified work happened: the resources its authorizations covered, most recent last
   latest: 'verified' | 'contradicted'; // most recent evidence decides the status
   knowledgeApprovedBy: string;
   canonApprovedBy: string;
@@ -56,6 +57,8 @@ export interface KnowledgePack {
   failureModes: string[];
   /** What the agents who did the work said the next agent should know. Their claim; the receipt does not verify it. */
   lessons: string[];
+  /** Where the verified work happened. Project-relative, most recent last. What lets a later agent start in the right place. */
+  paths: string[];
   /** Verified across enough distinct intents to be proposed for Knowledge, but not yet approved. */
   candidate: boolean;
   /** Something is waiting on a principal: a candidate to approve, or a conflicted Knowledge/Canon. */
@@ -108,6 +111,19 @@ export interface SynthesisOptions {
 }
 
 const MIN_LESSON = 20;
+const MAX_PATHS = 12;
+
+/**
+ * A resource as a location worth remembering: project-relative, normalized, and naming something
+ * specific. A project-wide resource ('.', '/'), a path outside the project, and UI-GATES' own state
+ * say nothing about where the work was, so they are not recorded.
+ */
+export function locationOf(resource: string): string | null {
+  const p = path.posix.normalize(resource.replace(/\\/g, '/')).replace(/^\.\//, '').replace(/\/$/, '');
+  if (!p || p === '.' || p === '/' || p === '..' || p.startsWith('../') || path.posix.isAbsolute(p) || /^[a-z]:/i.test(p)) return null;
+  if (/(^|\/)\.(uigates|uig)(\/|$)/.test(p)) return null;
+  return p;
+}
 
 const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -156,7 +172,7 @@ export function loadKnowledge(projectRoot: string): KnowledgePack[] {
     const level = levelOf(s), status = statusOf(s), candidate = isCandidate(s);
     out.push({
       file, action: s.action, status, level, expected: s.expected, evidence: s.evidence,
-      intents: s.intents, failureModes: s.failureModes, lessons: s.lessons ?? [], candidate,
+      intents: s.intents, failureModes: s.failureModes, lessons: s.lessons ?? [], paths: s.paths ?? [], candidate,
       needsPrincipal: (status === 'verified' && candidate) || (status === 'conflicted' && level !== 'task'),
     });
   }
@@ -319,6 +335,9 @@ export class CESynthesizer {
     if (kind === 'verified') {
       const evidence = flat(receipt.evidence.filter(e => e.trim()).join(', '));
       if (evidence && !state.evidence.includes(evidence)) state.evidence = `${state.evidence}; ${evidence}`.slice(-4000);
+      state.paths ??= [];
+      const where = this.authority === 'unverified' ? null : locationOf(this.authority.lookup(receipt.authorizationId)?.authorization.resource ?? '');
+      if (where && !state.paths.includes(where)) state.paths = [...state.paths, where].slice(-MAX_PATHS);
       const lesson = receipt.lesson ? flat(receipt.lesson) : '';
       if (lesson && !state.lessons.includes(lesson)) state.lessons = [...state.lessons, lesson].slice(-3);
       const intent = flat(receipt.intentId);
@@ -420,6 +439,9 @@ retired_by: ${s.retiredBy}
 ---
 # Knowledge Pack: ${s.action}
 **${this.headline(s)}**
+
+## Where
+${(s.paths ?? []).length ? (s.paths ?? []).map(p => `- ${p}`).join('\n') : '_Not recorded._'}
 
 ## Lesson
 ${(s.lessons ?? []).length
