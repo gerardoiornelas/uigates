@@ -133,5 +133,5 @@ Jev or any model-based classifier and its enforcement, pre-tool-use hooks and mi
 2. ~~Confirm the task 1 gap and close the CI-gating gap.~~ Done 2026-09-21: task 1 replaced (see above); CI gating fixed in the engine.
 3. ~~Freeze the three prompts, including the task 1 verification requirement.~~ Done: [PROMPTS.md](../evaluations/vae-mvp-1/PROMPTS.md).
 4. ~~Copy the skill into the trial worktree and commit it as "trial setup".~~ Done: `8760dca`, then `d85b6b6` (`--no-install`), then `111ed08` (installed as the `uigates` plugin after run 1 was void).
-5. Run stage 1 (tasks 1 to 3, a new session each); score each with the audit and the score sheet.
+5. ~~Run stage 1 (tasks 1 to 3, a new session each); score each with the audit and the score sheet.~~ Done 2026-09-21; see [RESULTS.md](../evaluations/vae-mvp-1/RESULTS.md). Two criteria remain open on transcripts.
 6. Read the failures and fix the skill from what they show; then decide on stage 2.
