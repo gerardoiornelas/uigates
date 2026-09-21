@@ -26,9 +26,10 @@ const HELP = `UI-GATES engine CLI
   uigates start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...] [--no-brief]
             [--principal <id>] [--expires-in-hours <n> | --expires <ISO date>] [--actor <id>...]
   uigates propose <intentId> --action <text> --resource <path> --impact low|medium|high
-            --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>]
+            --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>] [--authorize]
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
   uigates authorize <proposalId> [--approved-by <principal>]
+            (propose --authorize does both in one call for a delegated action; a gated one still waits for the principal)
   uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>]
   uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
             --lesson is what the next agent should know that the action's title does not say. Only a receipt
@@ -131,6 +132,16 @@ const DENIAL_HELP: Record<DenialKind, { label: string; next: string }> = {
   'policy': { label: 'a policy refused it', next: 'Ask the principal.' },
 };
 
+/** Sign and record an authorization the engine has already approved, and say what it covers. */
+function issueAuthorization(rt: Runtime, proposal: Proposal, intent: Intent, state: Authorization['state'], approvedBy?: string): void {
+  const authorization = rt.gov.authorize(proposal, intent.principalId, state);
+  rt.state.saveAuthorization(authorization);
+  console.log(`Authorization: ${authorization.id}`);
+  console.log(`State: ${authorization.state}${authorization.state === 'gated' ? ` (approved by ${approvedBy})` : ' (delegated by the intent)'}`);
+  console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
+  console.log(`Next: do the work, then: uigates receipt ${authorization.id} --run "<verification command>"`);
+}
+
 function describeAuthorization(a: Authorization): string {
   return `${a.id}  ${a.state}  ${a.action} -> ${a.resource}`;
 }
@@ -155,7 +166,7 @@ async function main(): Promise<void> {
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
       transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
-      paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' },
+      paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' }, authorize: { type: 'boolean' },
     },
   });
   const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
@@ -287,9 +298,15 @@ async function main(): Promise<void> {
       console.log(evaluation.denied ? `Authority: DENIED (${help?.label ?? 'not allowed'})` : `Authority: ${evaluation.suggestedState}`);
       console.log(`Why: ${evaluation.rationale}`);
       if (evaluation.denied) { if (help) console.log(`Next: ${help.next}`); process.exitCode = 1; return; }
-      console.log(evaluation.suggestedState === 'gated'
-        ? 'Next: ask the principal. Only after they approve, run: uigates authorize ' + proposal.id + ' --approved-by ' + intent.principalId
-        : 'Next: uigates authorize ' + proposal.id);
+      if (evaluation.suggestedState === 'gated') {
+        // --authorize never speaks for the principal: a gated action always waits for their yes, then a separate authorize.
+        console.log('Next: ask the principal. Only after they approve, run: uigates authorize ' + proposal.id + ' --approved-by ' + intent.principalId);
+      } else if (v.authorize) {
+        // The proposal is saved and evaluated before the authorization is written, so the order on record is unchanged.
+        issueAuthorization(rt, proposal, intent, evaluation.suggestedState);
+      } else {
+        console.log('Next: uigates authorize ' + proposal.id);
+      }
       return;
     }
 
@@ -308,12 +325,7 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const authorization = rt.gov.authorize(proposal, intent.principalId, evaluation.suggestedState);
-      rt.state.saveAuthorization(authorization);
-      console.log(`Authorization: ${authorization.id}`);
-      console.log(`State: ${authorization.state}${authorization.state === 'gated' ? ` (approved by ${v['approved-by']})` : ' (delegated by the intent)'}`);
-      console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
-      console.log(`Next: do the work, then: uigates receipt ${authorization.id} --run "<verification command>"`);
+      issueAuthorization(rt, proposal, intent, evaluation.suggestedState, v['approved-by']);
       return;
     }
 
