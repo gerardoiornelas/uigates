@@ -7,7 +7,7 @@ import type { Intent, Proposal } from './types/primitives';
 /**
  * The engine used to gate only package.json, settings.json and .env by name, so an agent that
  * declared a CI or deployment edit as low impact was told it could proceed. Gate-class resources
- * now need the principal whatever impact is declared, and the same list is what `uig audit` uses.
+ * now need the principal whatever impact is declared, and the same list is what `uigates audit` uses.
  *
  * Run: npx tsx --test plugins/uigates/core/gate_class_test.ts
  */

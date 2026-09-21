@@ -32,7 +32,7 @@ const receipt = (over: Partial<Receipt> = {}): Receipt => {
 };
 
 function world(t: any, requireLesson?: boolean) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-lesson-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-lesson-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const store = new ReceiptStore(true);
   const synth = new CESynthesizer(store, root, 'unverified', { evidenceVerifier: () => true, ...(requireLesson === undefined ? {} : { requireLesson }) });
@@ -48,7 +48,7 @@ test('by default a verified receipt is promoted with no lesson, as before', asyn
   assert.equal(w.packs().length, 1);
   assert.deepEqual(w.packs()[0].lessons, []);
   assert.deepEqual(w.synth.getUnpromoted(), []);
-  const md = fs.readFileSync(path.join(w.root, '.uig/knowledge/compound_packs', w.packs()[0].file), 'utf8');
+  const md = fs.readFileSync(path.join(w.root, '.uigates/knowledge/compound_packs', w.packs()[0].file), 'utf8');
   assert.match(md, /_None stated: this pack records that the action was verified, not what it teaches\._/);
 });
 
@@ -127,7 +127,7 @@ test('the same lesson from another intent is not stored twice', async t => {
 test('the pack text stores a lesson on one line and labels it as a claim', async t => {
   const w = world(t);
   await w.ingest(receipt({ lesson: '# Heading\n\n## Another\nwrap the writes in one transaction' }));
-  const md = fs.readFileSync(path.join(w.root, '.uig/knowledge/compound_packs', w.packs()[0].file), 'utf8');
+  const md = fs.readFileSync(path.join(w.root, '.uigates/knowledge/compound_packs', w.packs()[0].file), 'utf8');
   assert.ok(md.split('\n').includes('- Heading ## Another wrap the writes in one transaction'));
   assert.match(md, /Stated by the agent that did the work\. The receipt proves the action succeeded; it does not prove this advice is right\./);
 });
@@ -136,7 +136,7 @@ test('a pack written before lessons existed still loads and accepts one', async 
   const w = world(t);
   await w.ingest(receipt());
   const file = w.packs()[0].file;
-  const stateFile = path.join(w.root, '.uig/knowledge/pack_state', `${file}.json`);
+  const stateFile = path.join(w.root, '.uigates/knowledge/pack_state', `${file}.json`);
   const saved = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
   delete saved.state.lessons; // markdown is untouched, so its hash still matches
   fs.writeFileSync(stateFile, JSON.stringify(saved));

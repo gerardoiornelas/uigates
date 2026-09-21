@@ -1,5 +1,5 @@
 {
-  "description": "UI-GATES write-time gate. Refuses a file edit that no unspent authorization covers. Does nothing unless enforcement is on (`uig enforce on` or UIG_ENFORCE=1), fails open on any error, and sees only the file-editing tools, not writes made through Bash.",
+  "description": "UI-GATES write-time gate. Refuses a file edit that no unspent authorization covers. Does nothing unless enforcement is on (`uigates enforce on` or UIGATES_ENFORCE=1), fails open on any error, and sees only the file-editing tools, not writes made through Bash.",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx --no-install uig hook pre-write",
+            "command": "npx --no-install uigates hook pre-write",
             "timeout": 15
           }
         ]

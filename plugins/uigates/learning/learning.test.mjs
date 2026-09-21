@@ -12,7 +12,7 @@ const trace=(input=1000,output=100,extra=[])=>Buffer.from([
   {type:'turn.completed',usage:{input_tokens:input,cached_input_tokens:Math.floor(input/2),output_tokens:output}},
 ].map(e=>JSON.stringify(e)).join('\n'));
 function fixture(t,n=16){
-  const root=fs.mkdtempSync(path.join(os.tmpdir(),'uig-cert-test-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'uigates-cert-test-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   const store=new EvidenceStore(root),memory=new LearningMemory(store),log=store.blob(Buffer.from('test passed'));
   const authority={principal:'fixture-only',source:'automated synthetic unit test',scope:'evaluation:trial',expiresAt:new Date(Date.now()+3600000).toISOString()};
   for(let i=1;i<=2;i++)store.put('runs',`d${i}`,{id:`d${i}`,taskId:`discovery-${i}`,project:'project',mode:'discovery',accepted:true,trace:store.blob(trace(10+i,2)),checks:[{exitCode:0,beforeHash:'a',afterHash:'a',log}]});

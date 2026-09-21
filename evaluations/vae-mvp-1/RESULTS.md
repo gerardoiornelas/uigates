@@ -1,5 +1,7 @@
 # VAE MVP trial: results
 
+> **Naming.** This trial ran on the project's earlier names: the `uig` command, `/uigates:uig`, the `.uig/` directory and `UIG_*` settings. Commands and paths below are quoted as they were used and are not rewritten. The project has since moved to one name, `uigates`; see [docs/namespace.md](../../docs/namespace.md).
+
 Scored from records and independent checks, not from the agent's own summary. Protocol and score sheet: [PROMPTS.md](PROMPTS.md). Plan and criteria: [docs/mvp.md](../../docs/mvp.md). Raw material lives outside the repo in `~/Documents/Git/uig-trials/results/`.
 
 ## Run log

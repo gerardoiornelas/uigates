@@ -2,16 +2,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
 import { covers, readRecords, type Finding } from './audit';
+import { envSetting, ROOT_STATE_PATH, stateDir } from '../core/names';
 
 /**
- * `uig hook pre-write`: a Claude Code PreToolUse hook that refuses a Write, Edit, MultiEdit or
+ * `uigates hook pre-write`: a Claude Code PreToolUse hook that refuses a Write, Edit, MultiEdit or
  * NotebookEdit unless an authorization already covers the file. It exists because the audit can
  * report a file written before it was authorized (trial task 2 did that twice) but cannot stop it.
  *
  * Limits, stated because they decide what this is worth:
  *  - It sees only the file-editing tools. A write made through Bash (`cat >> file`, `sed -i`) is
  *    invisible to it, and so is anything an agent does outside the harness.
- *  - It is opt-in (`uig enforce on` or UIG_ENFORCE=1). An active intent lasts 24 hours by default,
+ *  - It is opt-in (`uigates enforce on` or UIGATES_ENFORCE=1). An active intent lasts 24 hours by default,
  *    and a hook that locks the project for that long during ordinary work would be worse than none.
  *  - It fails open. Only a definite refusal exits 2, which is what blocks the tool call; every
  *    internal error exits 1, which does not.
@@ -28,10 +29,10 @@ export interface HookPayload {
 export interface HookDecision { allow: boolean; message?: string }
 
 const allow = (): HookDecision => ({ allow: true });
-const refuse = (message: string): HookDecision => ({ allow: false, message: `uig: ${message}` });
+const refuse = (message: string): HookDecision => ({ allow: false, message: `uigates: ${message}` });
 
 export function enforcementOn(root: string, env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.UIG_ENFORCE === '1' || fs.existsSync(path.join(root, '.uig', 'enforce'));
+  return envSetting('ENFORCE', env) === '1' || fs.existsSync(path.join(stateDir(root), 'enforce'));
 }
 
 /** Resolve symlinks through the deepest part of the path that exists, so /tmp and /private/tmp agree. */
@@ -57,15 +58,15 @@ export function decideWrite(root: string, payload: HookPayload, now = Date.now()
   // Outside the project there is no authorization to check; the host's own permissions govern that.
   if (rel === '..' || rel.startsWith('../') || path.isAbsolute(rel)) return allow();
 
-  if (rel === '.uig' || rel.startsWith('.uig/')) {
-    return refuse(`${rel} is UI-GATES state. It is written only by the uig CLI and cannot be edited through a file tool.`);
+  if (ROOT_STATE_PATH.test(rel)) {
+    return refuse(`${rel} is UI-GATES state. It is written only by the uigates CLI and cannot be edited through a file tool.`);
   }
 
   const sink: Finding[] = [];
   const intents = readRecords<Intent>(root, 'intents', sink);
   const active = intents.filter(i => Date.parse(String(i.expiry)) > now);
   if (!active.length) {
-    return refuse(`no active intent, so nothing authorizes editing ${rel}. Start one with: uig start "<goal>" --domain <path> --success <evidence>`);
+    return refuse(`no active intent, so nothing authorizes editing ${rel}. Start one with: uigates start "<goal>" --domain <path> --success <evidence>`);
   }
   const activeIds = new Set(active.map(i => i.id));
   const latest = [...active].sort((a, b) => Date.parse(String(b.createdAt)) - Date.parse(String(a.createdAt)))[0];
@@ -78,7 +79,7 @@ export function decideWrite(root: string, payload: HookPayload, now = Date.now()
   if (live.some(a => covers(a.resource, rel))) return allow();
 
   // A record the hook cannot read is an internal error, not a verdict: fail open and say so. The audit fails it.
-  if (sink.length) throw new Error(`${sink[0].message} Run uig audit.`);
+  if (sink.length) throw new Error(`${sink[0].message} Run uigates audit.`);
 
   const proposals = readRecords<Proposal>(root, 'proposals', sink);
   const authorized = new Set(authorizations.map(a => a.proposalId));
@@ -90,7 +91,7 @@ export function decideWrite(root: string, payload: HookPayload, now = Date.now()
   }
   return refuse(`${rel} is not covered by an unspent authorization. ${wasSpent
     ? 'The one that covered it already has a receipt; a further edit needs a new proposal (after a delta, with a replan).'
-    : `Propose it, then authorize it, before editing: uig propose ${latest.id} --action ... --resource ${rel} --impact ... --rationale ... --risk ... --verify ...`}`);
+    : `Propose it, then authorize it, before editing: uigates propose ${latest.id} --action ... --resource ${rel} --impact ... --rationale ... --risk ... --verify ...`}`);
 }
 
 /** Entry point for the CLI: reads the hook payload from stdin. Never lets an internal error block an edit. */
@@ -101,6 +102,6 @@ export function runHook(root: string, stdin: string): { exit: 0 | 1 | 2; stderr?
     const decision = decideWrite(root, payload);
     return decision.allow ? { exit: 0 } : { exit: 2, stderr: decision.message };
   } catch (error) {
-    return { exit: 1, stderr: `uig hook: ${error instanceof Error ? error.message : String(error)} (edit allowed)` };
+    return { exit: 1, stderr: `uigates hook: ${error instanceof Error ? error.message : String(error)} (edit allowed)` };
   }
 }

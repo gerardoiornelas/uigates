@@ -22,10 +22,10 @@ export async function runTask(store, spec, options={}) {
   const source=path.resolve(spec.source),before=snapshot(source);
   ensure(digest(before)===digest(spec.sourceHashes),'Source differs from frozen task');
   for(const c of spec.checks)ensure(sha(fs.readFileSync(c.file))===c.sha256,'Verifier differs from frozen plan');
-  const work=fs.mkdtempSync(path.join(os.tmpdir(),'uig-agent-'));
+  const work=fs.mkdtempSync(path.join(os.tmpdir(),'uigates-agent-'));
   // Evidence is retained outside the worker. Neither prompts nor workspace copies
   // contain other arms, discovery traces, lesson stores, or hidden verifier paths.
-  fs.cpSync(source,work,{recursive:true,filter:file=>!['.git','node_modules','.uig-learning'].includes(path.basename(file))});
+  fs.cpSync(source,work,{recursive:true,filter:file=>!['.git','node_modules','.uigates-learning','.uig-learning'].includes(path.basename(file))});
   const git=spawnSync('git',['init','-q',work]);ensure(git.status===0,'Unable to initialize isolated checkout');
   const guidance=spec.guidance??[];
   const prompt=[

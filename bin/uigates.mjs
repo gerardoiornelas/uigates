@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Launcher for the UI-GATES engine CLI. Runs the TypeScript entrypoint through the pinned tsx,
-// so `npx uig ...` works from any project that installs this package.
+// so `npx uigates ...` works from any project that installs this package.
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';

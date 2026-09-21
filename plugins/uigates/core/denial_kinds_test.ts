@@ -43,7 +43,7 @@ test('each denial reason has its own kind', () => {
   assert.equal(decide(proposal('src/a.js'), intent({ expiry: new Date(Date.now() - 1000) })).denial, 'expired');
   assert.equal(decide(proposal('src/a.js'), intent({ authorizedActors: ['someone-else'] })).denial, 'wrong-actor');
   assert.equal(decide(proposal('src/a.js', { intentId: 'other' })).denial, 'wrong-intent');
-  assert.equal(decide(proposal('.uig/receipts/x.json'), intent({ authorityDomain: ['/'] })).denial, 'protected-record');
+  assert.equal(decide(proposal('.uigates/receipts/x.json'), intent({ authorityDomain: ['/'] })).denial, 'protected-record');
 });
 
 test('an allowed proposal carries no denial kind', () => {

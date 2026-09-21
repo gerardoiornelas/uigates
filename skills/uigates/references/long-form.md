@@ -1,9 +1,6 @@
----
-name: ui-gates
-description: Run an authority-aware, learning workflow for meaningful agentic work. Use when a task should be grounded in repository knowledge, bounded by explicit intent, verified with evidence, and synthesized into reusable learning. Do not use for a trivial answer or an isolated read-only question.
----
+# UI-GATES: long-form reference
 
-# UI-GATES
+The extended workflow behind the `uigates` skill ([`../SKILL.md`](../SKILL.md)). It is a reference, not a second skill.
 
 Use UI-GATES to ensure a meaningful task leaves the repository easier to change than it was before.
 
@@ -32,7 +29,7 @@ Reasoning proposes. Authority decides. Verified work synthesizes into reusable k
 
 ## Knowledge promotion
 
-Read [knowledge artifact templates](references/knowledge-artifacts.md) when creating a durable artifact.
+Read [knowledge artifact templates](knowledge-artifacts.md) when creating a durable artifact.
 
 - Keep an implementation observation task-local unless it changes a future decision.
 - Promote a decision when future work must understand a tradeoff.
@@ -42,13 +39,13 @@ Read [knowledge artifact templates](references/knowledge-artifacts.md) when crea
 
 ## Recording with the engine
 
-If the UI-GATES engine CLI is installed (`npx --no-install uig help` succeeds), record the workflow through it instead of prose. State lives in `.uig/`; each call is a separate process and the engine rebuilds its authority ledger from those records.
+If the UI-GATES engine CLI is installed (`npx --no-install uigates help` succeeds), record the workflow through it instead of prose. State lives in `.uigates/` (or `.uig/` in a project that already has it); each call is a separate process and the engine rebuilds its authority ledger from those records.
 
-1. `uig start "<goal>" --domain <path> --success <evidence>` bounds the intent (principal, delegated domain, expiry).
-2. `uig propose <intentId> --action … --resource … --impact low|medium|high --rationale … --risk … --verify …` returns **delegated**, **gated**, or **DENIED**. Stop on denied.
-3. `uig authorize <proposalId>` issues delegated authority. For a gated action, ask the principal first; pass `--approved-by <principal>` only after their explicit yes in conversation. Never approve your own gated action.
-4. Do the work, then `uig receipt <authorizationId> --run "<verification command>"`. The CLI runs the command and hashes its output as evidence; you do not assert the result. Authorize before you write, not after: `uig audit` flags a file written before it was authorized. The CLI records the command and its output, not the script it runs, so keep any verification script inside the project and within your domain, and leave it in place until the receipt is recorded; `uig audit` flags a verification that runs a script outside the project or one that has since been deleted. A non-zero exit is a delta: return to planning and retry only with `--replan-after <receiptId> --root-cause … --revision …`. State what the next agent should know with `--lesson "<advice>"` when you record the receipt: a receipt without one is verified but teaches nothing, is not promoted, and cannot be given one later. It must say more than the action title or the verification plan, or `uig` refuses it before running anything.
-5. `uig synthesize <intentId>`, then `uig knowledge`. Only receipts that state a lesson are promoted, and a lesson is your claim, not something the receipt verifies. Lessons start at Task level; reuse across distinct intents makes a candidate. `uig approve` and `uig retire` are the principal's decisions, never yours.
+1. `uigates start "<goal>" --domain <path> --success <evidence>` bounds the intent (principal, delegated domain, expiry).
+2. `uigates propose <intentId> --action … --resource … --impact low|medium|high --rationale … --risk … --verify …` returns **delegated**, **gated**, or **DENIED**. Stop on denied.
+3. `uigates authorize <proposalId>` issues delegated authority. For a gated action, ask the principal first; pass `--approved-by <principal>` only after their explicit yes in conversation. Never approve your own gated action.
+4. Do the work, then `uigates receipt <authorizationId> --run "<verification command>"`. The CLI runs the command and hashes its output as evidence; you do not assert the result. Authorize before you write, not after: `uigates audit` flags a file written before it was authorized. The CLI records the command and its output, not the script it runs, so keep any verification script inside the project and within your domain, and leave it in place until the receipt is recorded; `uigates audit` flags a verification that runs a script outside the project or one that has since been deleted. A non-zero exit is a delta: return to planning and retry only with `--replan-after <receiptId> --root-cause … --revision …`. State what the next agent should know with `--lesson "<advice>"` when you record the receipt: a receipt without one is verified but teaches nothing, is not promoted, and cannot be given one later. It must say more than the action title or the verification plan, or `uigates` refuses it before running anything.
+5. `uigates synthesize <intentId>`, then `uigates knowledge`. Only receipts that state a lesson are promoted, and a lesson is your claim, not something the receipt verifies. Lessons start at Task level; reuse across distinct intents makes a candidate. `uigates approve` and `uigates retire` are the principal's decisions, never yours.
 
 Without the engine, record the same fields in markdown and say in the completion report that synthesis was not engine-verified.
 

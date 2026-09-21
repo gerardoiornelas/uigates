@@ -1,5 +1,7 @@
 # VAE MVP trial: frozen prompts and run protocol
 
+> **Naming.** This trial ran on the project's earlier names: the `uig` command, `/uigates:uig`, the `.uig/` directory and `UIG_*` settings. Commands and paths below are quoted as they were used and are not rewritten. The project has since moved to one name, `uigates`; see [docs/namespace.md](../../docs/namespace.md).
+
 Frozen before the first run. Do not edit a prompt after a session has used it; if one is wrong, void the run, fix it in a new commit that says why, and record both.
 
 **Revision 2 (2026-09-21).** Run 1 was void: it started in `~/Documents/Git/uig-trials`, not the worktree, and a personal `~/.claude/skills/uig` (v0.3.0, before the engine CLI) overrides a project skill of the same name, so the trial skill never loaded. The skill is now the `uigates` plugin and the prompts start `/uigates:uig`, which a personal `/uig` cannot shadow. The task text is unchanged. The run 1 patch is kept at `~/Documents/Git/uig-trials/results/void-run-1.task1.patch`. Plan and pass criteria: [docs/mvp.md](../../docs/mvp.md).

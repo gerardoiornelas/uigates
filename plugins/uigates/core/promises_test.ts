@@ -59,7 +59,7 @@ const mkReceipt = (a: Authorization, o: Partial<Receipt> = {}): Receipt => ({
   expectedOutcome: 'tests pass', actualOutcome: 'Verified success', delta: 'None', evidence: ['run.log'],
   verifiedAt: new Date(), ...o,
 });
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'uig-promises-'));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-promises-'));
 
 interface World { root: string; store: ReceiptStore; ledger: AuthorityLedger; synth: CESynthesizer }
 function world(): World {
@@ -138,11 +138,11 @@ async function authority() {
   {
     const gov = new GovernanceEngine();
     const wide = mkIntent({ authorityDomain: ['/'] }); // the domain the repo's own tests use
-    const targets = ['.uig/authorizations/a.json', '.uig/receipts/r.json', '.uig/intents/i.json', '.uig/proposals/p.json', 'src/../.uig/receipts/r.json', './.uig/authorizations/a.json'];
+    const targets = ['.uigates/authorizations/a.json', '.uigates/receipts/r.json', '.uigates/intents/i.json', '.uigates/proposals/p.json', 'src/../.uigates/receipts/r.json', './.uigates/authorizations/a.json'];
     const outcomes = targets.map(t => gov.evaluate(mkProposal({ resource: t }), wide));
     check('A6 authority and audit records are prohibited, even under a wide domain and via path tricks',
       outcomes.every(o => o.denied), outcomes.map(o => o.suggestedState).join(','));
-    const knowledge = gov.evaluate(mkProposal({ resource: '.uig/knowledge/compound_packs/x.md' }), wide);
+    const knowledge = gov.evaluate(mkProposal({ resource: '.uigates/knowledge/compound_packs/x.md' }), wide);
     check('A6b knowledge cannot be hand-edited without a principal decision (gated)', knowledge.suggestedState === 'gated' && !knowledge.denied, knowledge.suggestedState);
     const source = gov.evaluate(mkProposal({ resource: 'src/app.ts' }), wide);
     check('A6c control: ordinary source under the same wide domain is still delegated', source.suggestedState === 'delegated', source.suggestedState);
@@ -311,7 +311,7 @@ async function knowledge() {
     executed(w, { intent: 'i1', action: act, principal: 'alice' });
     await synth(w, 'i1');
     let p = pack(w, act)!;
-    const text = () => fs.readFileSync(path.join(w.root, '.uig/knowledge/compound_packs', p.file), 'utf8');
+    const text = () => fs.readFileSync(path.join(w.root, '.uigates/knowledge/compound_packs', p.file), 'utf8');
     check('C3 one verified success earns Task, not Knowledge, and is not yet a candidate', p.level === 'task' && !p.candidate && !/Proven Pattern/.test(text()) && /not confirmed yet/.test(text()), `${p.level}`);
 
     executed(w, { intent: 'i1', action: act, principal: 'alice' });
@@ -379,7 +379,7 @@ async function knowledge() {
     executed(w, { intent: 'i1', action: act });
     await synth(w, 'i1');
     let p = pack(w, act)!;
-    const text = () => fs.readFileSync(path.join(w.root, '.uig/knowledge/compound_packs', p.file), 'utf8');
+    const text = () => fs.readFileSync(path.join(w.root, '.uigates/knowledge/compound_packs', p.file), 'utf8');
     const before = text();
     check('C5 every pack states when to apply, when NOT to, and its limits',
       /Apply when/.test(before) && /Do NOT apply when/.test(before) && /Limits/.test(before) && /absence of failure is not proof/.test(before));
@@ -398,7 +398,7 @@ async function knowledge() {
     executed(w, { intent: 'i2', action: act, principal: 'alice' });
     await synth(w, 'i2');
     const promotedK = threw(() => w.synth.approveKnowledge(act, 'alice'));
-    const files = () => fs.readdirSync(path.join(w.root, '.uig/knowledge/compound_packs')).length;
+    const files = () => fs.readdirSync(path.join(w.root, '.uigates/knowledge/compound_packs')).length;
     executed(w, { intent: 'i3', action: act, principal: 'alice', success: false, delta: 'Hot shard' });
     await synth(w, 'i3');
     let p = pack(w, act)!;
@@ -422,9 +422,9 @@ async function knowledge() {
     const w = world();
     executed(w, { intent: 'i1', action: 'Pin dependencies' });
     await synth(w, 'i1');
-    const first = fs.readdirSync(path.join(w.root, '.uig/knowledge/compound_packs')).map(f => fs.readFileSync(path.join(w.root, '.uig/knowledge/compound_packs', f), 'utf8')).join();
+    const first = fs.readdirSync(path.join(w.root, '.uigates/knowledge/compound_packs')).map(f => fs.readFileSync(path.join(w.root, '.uigates/knowledge/compound_packs', f), 'utf8')).join();
     await synth(w, 'i1'); await synth(w, 'i1');
-    const after = fs.readdirSync(path.join(w.root, '.uig/knowledge/compound_packs')).map(f => fs.readFileSync(path.join(w.root, '.uig/knowledge/compound_packs', f), 'utf8')).join();
+    const after = fs.readdirSync(path.join(w.root, '.uigates/knowledge/compound_packs')).map(f => fs.readFileSync(path.join(w.root, '.uigates/knowledge/compound_packs', f), 'utf8')).join();
     check('C7 synthesizing the same receipts again changes nothing (no self-inflicted rejections either)', first === after && w.synth.getRejections().length === 0);
     fs.rmSync(w.root, { recursive: true, force: true });
   }

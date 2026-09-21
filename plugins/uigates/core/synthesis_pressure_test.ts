@@ -53,7 +53,7 @@ function check(name: string, pass: boolean, detail = ''): void {
 
 /** Project root nested in an owned container so escape checks can scan the container only. */
 function tmpRoot(): string {
-  const container = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-synth-'));
+  const container = fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-synth-'));
   const root = path.join(container, 'proj');
   fs.mkdirSync(root);
   return root;
@@ -62,7 +62,7 @@ function cleanup(root: string): void {
   fs.rmSync(path.dirname(root), { recursive: true, force: true });
 }
 function packsDir(root: string): string {
-  return path.join(root, '.uig', 'knowledge', 'compound_packs');
+  return path.join(root, '.uigates', 'knowledge', 'compound_packs');
 }
 function listPacks(root: string): string[] {
   const d = packsDir(root);
@@ -155,7 +155,7 @@ async function partA() {
   // "lesson_.." segment is not a directory); 'a/../../../x' normalizes lexically.
   for (const payload of ['../../escaped', 'a/../../../escaped', 'a/../../../../../escaped']) {
     const { root, error } = await world([rec({ actionPerformed: payload })]);
-    const stateDir = path.join(root, '.uig', 'knowledge', 'pack_state');
+    const stateDir = path.join(root, '.uigates', 'knowledge', 'pack_state');
     const escaped = walk(path.dirname(root)).filter(f => !f.startsWith(packsDir(root) + path.sep) && !f.startsWith(stateDir + path.sep));
     check(`A4 traversal payload "${payload}" cannot write outside knowledge storage`, escaped.length === 0,
       escaped.length ? `escaped: ${escaped.map(f => path.relative(path.dirname(root), f)).join(', ')}` : error ? `threw: ${error.slice(0, 60)}` : '');

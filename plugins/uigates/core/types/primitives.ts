@@ -46,7 +46,7 @@ export interface Proposal {
   taskId?: string;
   /**
    * Required when the task's latest receipt ended in a delta: "do not retry on a delta without
-   * first returning to planning to address its root cause" (skills/uig). The engine checks that
+   * first returning to planning to address its root cause" (skills/uigates). The engine checks that
    * the replan exists and cites the failing receipt; it cannot judge whether the replan is sound.
    */
   replan?: { after: string; rootCause: string; revision: string };

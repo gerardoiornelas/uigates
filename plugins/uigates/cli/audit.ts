@@ -4,10 +4,11 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import type { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
 import { gateClassOf } from '../core/GateClass';
+import { hasBothStateDirs, ROOT_STATE_PATH, STATE_DIRS, stateDir, stateDirName } from '../core/names';
 
 /**
- * `uig audit` scores a finished session from the outside: it compares what changed in the working
- * tree with what `.uig/` says was authorized and verified. It is deterministic, uses no model, and
+ * `uigates audit` scores a finished session from the outside: it compares what changed in the working
+ * tree with what the state directory (`.uigates/`, or `.uig/` in an older project) says was authorized and verified. It is deterministic, uses no model, and
  * is read-only. It reads the records directly rather than through the engine's Runtime, so it does
  * not trust the code it is checking.
  *
@@ -81,7 +82,7 @@ function git(root: string, args: string[]): string {
   return run.stdout;
 }
 
-/** Everything that differs from `base`: staged, unstaged, committed since, and untracked. `.uig/` is the record, not a change. */
+/** Everything that differs from `base`: staged, unstaged, committed since, and untracked. The state directory is the record, not a change. */
 export function changedFiles(root: string, base: string): ChangedFile[] {
   git(root, ['rev-parse', '--verify', `${base}^{commit}`]);
   const out = new Map<string, ChangedFile>();
@@ -93,16 +94,16 @@ export function changedFiles(root: string, base: string): ChangedFile[] {
   for (const file of git(root, ['ls-files', '--others', '--exclude-standard', '-z']).split('\0')) {
     if (file) out.set(file, { path: file, status: 'U' });
   }
-  return [...out.values()].filter(f => !/^\.uig(\/|$)/.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
+  return [...out.values()].filter(f => !ROOT_STATE_PATH.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
 }
 
 export function readRecords<T>(root: string, dir: string, findings: Finding[]): T[] {
-  const full = path.join(root, '.uig', dir);
+  const full = path.join(stateDir(root), dir);
   if (!fs.existsSync(full)) return [];
   const out: T[] = [];
   for (const file of fs.readdirSync(full).filter(f => f.endsWith('.json')).sort()) {
     try { out.push(JSON.parse(fs.readFileSync(path.join(full, file), 'utf8')) as T); }
-    catch { findings.push({ severity: 'FAIL', check: 'records', message: `Unreadable record .uig/${dir}/${file}.` }); }
+    catch { findings.push({ severity: 'FAIL', check: 'records', message: `Unreadable record ${stateDirName(root)}/${dir}/${file}.` }); }
   }
   return out;
 }
@@ -200,8 +201,9 @@ function checkEvidence(root: string, baseRef: string, receipt: Receipt, findings
     }
   }
 
-  // Evidence the CLI produced lives at .uig/evidence/<receiptId>.log and starts with the command it ran.
-  const logRef = receipt.evidence.map(ref => /^sha256:[0-9a-f]{64}:(.+)$/.exec(ref)?.[1]).find(p => p === `.uig/evidence/${receipt.id}.log`);
+  // Evidence the CLI produced lives at <state directory>/evidence/<receiptId>.log and starts with the command it ran.
+  // Either directory name counts: the reference is hash-bound, and a project's records may predate the rename.
+  const logRef = receipt.evidence.map(ref => /^sha256:[0-9a-f]{64}:(.+)$/.exec(ref)?.[1]).find(p => STATE_DIRS.some(d => p === `${d}/evidence/${receipt.id}.log`));
   const logFile = logRef ? path.join(base, logRef) : undefined;
   if (logFile && fs.existsSync(logFile)) {
     const log = fs.readFileSync(logFile, 'utf8');
@@ -232,8 +234,11 @@ function checkEvidence(root: string, baseRef: string, receipt: Receipt, findings
 
 export function audit(root: string, base: string, intentFilter?: string): AuditReport {
   const findings: Finding[] = [];
+  if (hasBothStateDirs(root)) {
+    findings.push({ severity: 'WARN', check: 'records', message: `Both .uigates/ and .uig/ exist. Records are read from ${stateDirName(root)}/ and the other directory is ignored, so anything recorded there is not scored.` });
+  }
   const intents = readRecords<Intent>(root, 'intents', findings).filter(i => !intentFilter || i.id === intentFilter);
-  if (intentFilter && !intents.length) throw new AuditError(`Intent ${intentFilter} not found in .uig/intents.`);
+  if (intentFilter && !intents.length) throw new AuditError(`Intent ${intentFilter} not found in ${stateDirName(root)}/intents.`);
   const inScope = new Set(intents.map(i => i.id));
   const proposals = readRecords<Proposal>(root, 'proposals', findings).filter(p => inScope.has(p.intentId));
   const authorizations = readRecords<Authorization>(root, 'authorizations', findings).filter(a => inScope.has(a.intentId));

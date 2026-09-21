@@ -9,44 +9,45 @@ import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitiv
 import type { DenialKind } from '../core/GovernanceEngine';
 import { audit, AuditError, failed, formatReport } from './audit';
 import { enforcementOn, runHook } from './hook';
+import { envSetting, hasBothStateDirs, stateDir, stateDirName } from '../core/names';
 
 /**
- * `uig` — the engine CLI an agent uses to make a /uig session real: intents, proposals and
+ * `uigates` — the engine CLI an agent uses to make a /uigates session real: intents, proposals and
  * authorizations pass through GovernanceEngine, evidence is produced (not claimed) by this tool,
- * and synthesis is CESynthesizer. State lives in `<root>/.uig/` and is rebuilt on every call.
+ * and synthesis is CESynthesizer. State lives in `<root>/.uigates/` (`.uig/` in a project that already has it) and is rebuilt on every call.
  */
 
 class UsageError extends Error {}
 
 const HELP = `UI-GATES engine CLI
 
-  uig start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...]
+  uigates start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...]
             [--principal <id>] [--expires-in-hours <n> | --expires <ISO date>] [--actor <id>...]
-  uig propose <intentId> --action <text> --resource <path> --impact low|medium|high
+  uigates propose <intentId> --action <text> --resource <path> --impact low|medium|high
             --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>]
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
-  uig authorize <proposalId> [--approved-by <principal>]
-  uig receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>]
-  uig receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
+  uigates authorize <proposalId> [--approved-by <principal>]
+  uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>]
+  uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
             --lesson is what the next agent should know that the action's title does not say. Only a receipt
             that carries one is promoted to a lesson, and it can only be stated here: a receipt cannot be amended.
-  uig synthesize <intentId>
-  uig knowledge
-  uig approve knowledge|canon "<action>" --principal <id>
-  uig retire "<action>" --principal <id>
-  uig status [intentId]
-  uig audit [--base <commit>] [--intent <id>] [--json]
+  uigates synthesize <intentId>
+  uigates knowledge
+  uigates approve knowledge|canon "<action>" --principal <id>
+  uigates retire "<action>" --principal <id>
+  uigates status [intentId]
+  uigates audit [--base <commit>] [--intent <id>] [--json]
             score a session: do the changes since <commit> (default HEAD) match what was authorized and verified?
             Read-only; exits 1 on any FAIL. It reads the records, so it shows consistency, not good behaviour.
 
-  uig enforce [on|off]
-            when on, the Claude Code hook (uig hook pre-write) refuses a file edit that no unspent authorization covers.
+  uigates enforce [on|off]
+            when on, the Claude Code hook (uigates hook pre-write) refuses a file edit that no unspent authorization covers.
             Off by default. It sees only the file-editing tools, not writes made through Bash.
-  uig hook pre-write    reads a PreToolUse payload on stdin; exit 2 blocks the edit, any other exit allows it
+  uigates hook pre-write    reads a PreToolUse payload on stdin; exit 2 blocks the edit, any other exit allows it
 
-  --root <dir>    project root (default: UIG_ROOT or the current directory)
+  --root <dir>    project root (default: UIGATES_ROOT or the current directory)
 
-Records live in <root>/.uig/. Delegated actions inside the intent's scope are authorized by the
+Records live in <root>/.uigates/ (or <root>/.uig/ in a project that already has it). Delegated actions inside the intent's scope are authorized by the
 intent itself. A gated action needs the principal's approval in conversation first; only then pass
 --approved-by. Principal decisions (approve, retire, --approved-by) must come from the user, never
 from the agent. For the learning/evaluation harness: node plugins/uigates/learning/cli.mjs help`;
@@ -57,11 +58,12 @@ function fail(message: string): never { throw new UsageError(message); }
 
 function principalFor(root: string, given?: string): string {
   if (given) return given;
-  if (process.env.UIG_PRINCIPAL) return process.env.UIG_PRINCIPAL;
+  const fromEnv = envSetting('PRINCIPAL');
+  if (fromEnv) return fromEnv;
   const git = spawnSync('git', ['config', 'user.email'], { cwd: root, encoding: 'utf8' });
   const email = git.status === 0 ? git.stdout.trim() : '';
   if (email) return email;
-  return fail('No principal. Pass --principal <id>, set UIG_PRINCIPAL, or configure git user.email. The principal owns the intent and signs its authority.');
+  return fail('No principal. Pass --principal <id>, set UIGATES_PRINCIPAL, or configure git user.email. The principal owns the intent and signs its authority.');
 }
 
 function expiryFrom(hours?: string, iso?: string): Date {
@@ -114,7 +116,7 @@ function runVerification(rt: Runtime, receiptId: string, command: string, timeou
 /** What a denial means and what to do next, by kind. Only 'protected-record' is a true prohibition. */
 const DENIAL_HELP: Record<DenialKind, { label: string; next: string }> = {
   'outside-domain': { label: 'outside the authorized domain', next: 'This is not a prohibition. Propose a project-relative path inside the intent\'s domain (temporary and verification files belong in the project too), or ask the principal to start a new intent with a wider domain.' },
-  'protected-record': { label: 'prohibited: protected record', next: 'UI-GATES records are written only by the uig CLI and cannot be altered through the workflow. Do not retry.' },
+  'protected-record': { label: 'prohibited: protected record', next: 'UI-GATES records are written only by the uigates CLI and cannot be altered through the workflow. Do not retry.' },
   'expired': { label: 'the intent has expired', next: 'Ask the principal for a new intent.' },
   'wrong-actor': { label: 'actor not authorized under this intent', next: 'Ask the principal to add the actor to the intent, or start a new one.' },
   'wrong-intent': { label: 'proposal belongs to a different intent', next: 'Propose under the intent it belongs to.' },
@@ -147,12 +149,12 @@ async function main(): Promise<void> {
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
     },
   });
-  const root = path.resolve(v.root ?? process.env.UIG_ROOT ?? process.cwd());
+  const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
   if (!fs.existsSync(root)) fail(`Project root does not exist: ${root}`);
 
   // The hook runs on every file edit and must not fail closed: it handles its own errors and never reaches the catch below.
   if (command === 'hook') {
-    const hookRoot = path.resolve(v.root ?? process.env.UIG_ROOT ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd());
+    const hookRoot = path.resolve(v.root ?? envSetting('ROOT') ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd());
     let input = '';
     try { input = fs.readFileSync(0, 'utf8'); } catch { /* no stdin: treated as an empty payload */ }
     const result = runHook(hookRoot, input);
@@ -162,16 +164,17 @@ async function main(): Promise<void> {
   }
 
   if (command === 'enforce') {
-    const marker = path.join(root, '.uig', 'enforce');
+    const marker = path.join(stateDir(root), 'enforce');
     const want = positionals[0];
     if (want === 'on') { fs.mkdirSync(path.dirname(marker), { recursive: true }); fs.writeFileSync(marker, 'on\n'); }
     else if (want === 'off') fs.rmSync(marker, { force: true });
-    else if (want !== undefined) fail('Usage: uig enforce [on|off]');
-    console.log(`Enforcement: ${enforcementOn(root) ? 'on' : 'off'}${process.env.UIG_ENFORCE === '1' ? ' (UIG_ENFORCE=1)' : ''}`);
+    else if (want !== undefined) fail('Usage: uigates enforce [on|off]');
+    const viaEnv = process.env.UIGATES_ENFORCE === '1' ? ' (UIGATES_ENFORCE=1)' : process.env.UIG_ENFORCE === '1' ? ' (UIG_ENFORCE=1, the older name)' : '';
+    console.log(`Enforcement: ${enforcementOn(root) ? 'on' : 'off'}${viaEnv}`);
     return;
   }
 
-  // Audit is read-only, so it runs before Runtime, which creates .uig/ and rebuilds engine state.
+  // Audit is read-only, so it runs before Runtime, which creates the state directory and rebuilds engine state.
   if (command === 'audit') {
     try {
       const report = audit(root, v.base ?? 'HEAD', v.intent);
@@ -185,6 +188,7 @@ async function main(): Promise<void> {
   }
 
   const rt = new Runtime(root);
+  if (hasBothStateDirs(root)) console.warn(`Warning: both .uigates/ and .uig/ exist. Records are read from ${stateDirName(root)}/ and the other directory is ignored.`);
   if (rt.orphans.length) console.warn(`Warning: ${rt.orphans.length} authorization(s) lack their proposal or intent and authorize nothing: ${rt.orphans.join(', ')}`);
 
   switch (command) {
@@ -241,8 +245,8 @@ async function main(): Promise<void> {
       console.log(`Why: ${evaluation.rationale}`);
       if (evaluation.denied) { if (help) console.log(`Next: ${help.next}`); process.exitCode = 1; return; }
       console.log(evaluation.suggestedState === 'gated'
-        ? 'Next: ask the principal. Only after they approve, run: uig authorize ' + proposal.id + ' --approved-by ' + intent.principalId
-        : 'Next: uig authorize ' + proposal.id);
+        ? 'Next: ask the principal. Only after they approve, run: uigates authorize ' + proposal.id + ' --approved-by ' + intent.principalId
+        : 'Next: uigates authorize ' + proposal.id);
       return;
     }
 
@@ -266,7 +270,7 @@ async function main(): Promise<void> {
       console.log(`Authorization: ${authorization.id}`);
       console.log(`State: ${authorization.state}${authorization.state === 'gated' ? ` (approved by ${v['approved-by']})` : ' (delegated by the intent)'}`);
       console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
-      console.log(`Next: do the work, then: uig receipt ${authorization.id} --run "<verification command>"`);
+      console.log(`Next: do the work, then: uigates receipt ${authorization.id} --run "<verification command>"`);
       return;
     }
 
@@ -331,10 +335,10 @@ async function main(): Promise<void> {
         ? `Lesson: ${lesson}`
         : 'Lesson: none. This receipt will not be promoted to a lesson, and one can only be stated when the receipt is recorded (a receipt cannot be amended).');
       if (delta.trim().toLowerCase() !== 'none') {
-        console.log(`Next: return to planning. A retry needs: uig propose ... ${proposal.taskId ? `--task ${proposal.taskId} ` : ''}--replan-after ${receipt.id} --root-cause "<why>" --revision "<what changes>"`);
+        console.log(`Next: return to planning. A retry needs: uigates propose ... ${proposal.taskId ? `--task ${proposal.taskId} ` : ''}--replan-after ${receipt.id} --root-cause "<why>" --revision "<what changes>"`);
         process.exitCode = 1;
       } else {
-        console.log(`Next: uig synthesize ${receipt.intentId}`);
+        console.log(`Next: uigates synthesize ${receipt.intentId}`);
       }
       return;
     }
@@ -365,7 +369,7 @@ async function main(): Promise<void> {
       const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger);
       if (level === 'knowledge') synth.approveKnowledge(action, principal);
       else if (level === 'canon') synth.approveCanon(action, principal);
-      else return fail('Usage: uig approve knowledge|canon "<action>" --principal <id>');
+      else return fail('Usage: uigates approve knowledge|canon "<action>" --principal <id>');
       console.log(`${principal} approved "${action}" as ${level}.`);
       return;
     }
@@ -396,7 +400,7 @@ async function main(): Promise<void> {
     }
 
     default:
-      return fail(`Unknown command "${command}". Run: uig help`);
+      return fail(`Unknown command "${command}". Run: uigates help`);
   }
 }
 
@@ -413,7 +417,7 @@ function printKnowledge(root: string): void {
 }
 
 main().catch(error => {
-  if (error instanceof UsageError) console.error(`uig: ${error.message}`);
-  else console.error(error instanceof Error ? `uig: ${error.message}` : error);
+  if (error instanceof UsageError) console.error(`uigates: ${error.message}`);
+  else console.error(error instanceof Error ? `uigates: ${error.message}` : error);
   process.exitCode = 2;
 });

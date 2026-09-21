@@ -4,6 +4,7 @@ import { Proposal, Intent, AuthorityState, Authorization, Policy } from './types
 import { AuthorityLedger } from './AuthorityLedger';
 import { ReceiptStore } from './ReceiptStore';
 import { gateClassOf } from './GateClass';
+import { AUDIT_RECORD_PATH, STATE_PATH } from './names';
 
 /**
  * Resource Protection Policy
@@ -38,10 +39,11 @@ export interface Evaluation {
   denial?: DenialKind;
 }
 
-// Authority and audit records: nothing that acts under an intent may alter them.
-const AUDIT_RECORDS = /(^|\/)\.uig\/(intents|proposals|authorizations|receipts)(\/|$)/;
-// Any other UI-GATES state (e.g. knowledge) changes only through synthesis, or with a principal's decision.
-const UIG_STATE = /(^|\/)\.uig(\/|$)/;
+// Authority and audit records (nothing that acts under an intent may alter them) and any other UI-GATES
+// state (e.g. knowledge, which changes only through synthesis or with a principal's decision). Both the
+// current and the legacy state directory are covered, whichever one the project uses.
+const AUDIT_RECORDS = AUDIT_RECORD_PATH;
+const UIGATES_STATE = STATE_PATH;
 
 const fingerprint = (p: Proposal) =>
   crypto.createHash('sha256').update(JSON.stringify([
@@ -137,7 +139,7 @@ export class GovernanceEngine {
         : `Resource ${proposal.resource} is outside the authorized domain.`);
     }
 
-    if (UIG_STATE.test(resource)) {
+    if (UIGATES_STATE.test(resource)) {
       return {
         suggestedState: 'gated',
         rationale: `Resource ${proposal.resource} is UI-GATES state; knowledge changes through synthesis or a principal decision.`,

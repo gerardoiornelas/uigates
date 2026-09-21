@@ -10,6 +10,8 @@ status: active
 
 # UI-GATES MVP Trial
 
+> **Naming.** This trial ran on the project's earlier names: the `uig` command, `/uigates:uig`, the `.uig/` directory and `UIG_*` settings. Commands and paths below are quoted as they were used and are not rewritten. The project has since moved to one name, `uigates`; see [docs/namespace.md](namespace.md).
+
 ## Thesis under test
 
 > A real agent, following `/uig` on real work, leaves a record that a script can verify, stops where it should, and produces a lesson from that work that the next task can use.

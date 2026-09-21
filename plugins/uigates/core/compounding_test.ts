@@ -4,6 +4,7 @@ import { ReceiptStore } from './ReceiptStore';
 import { Intent, Proposal, Authorization, Receipt } from './types/primitives';
 import { CESynthesizer } from '../intelligence/ce/synthesizer';
 import * as fs from 'fs';
+import { stateDir } from './names';
 import * as path from 'path';
 
 /**
@@ -15,7 +16,7 @@ class CompoundingWorker {
 
   // Load knowledge from the filesystem
   loadKnowledge(projectRoot: string) {
-    const knowledgeDir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
+    const knowledgeDir = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs');
     if (fs.existsSync(knowledgeDir)) {
       const files = fs.readdirSync(knowledgeDir);
       this.knowledge = files.map(f => fs.readFileSync(path.join(knowledgeDir, f), 'utf8'));

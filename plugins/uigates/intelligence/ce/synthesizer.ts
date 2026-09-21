@@ -4,6 +4,7 @@ import * as path from 'path';
 import { AuthorityLedger } from '../../core/AuthorityLedger';
 import { ReceiptStore } from '../../core/ReceiptStore';
 import { Receipt } from '../../core/types/primitives';
+import { stateDir } from '../../core/names';
 
 const MAX_FIELD = 500;
 const POSITIVE_OUTCOME = /\bsucc(?:ess(?:ful(?:ly)?)?|eed(?:s|ed)?)\b/i;
@@ -88,8 +89,8 @@ function statusOf(s: PackState): PackStatus {
 /** Markdown is a projection, not an approval record. A modified projection is withheld. */
 function trustedState(projectRoot: string, file: string): PackState | undefined {
   try {
-    const state = JSON.parse(fs.readFileSync(path.join(projectRoot, '.uig', 'knowledge', 'pack_state', file + '.json'), 'utf8'));
-    const markdown = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs', file);
+    const state = JSON.parse(fs.readFileSync(path.join(stateDir(projectRoot), 'knowledge', 'pack_state', file + '.json'), 'utf8'));
+    const markdown = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs', file);
     if (state.markdownSha256 && (!fs.existsSync(markdown) || crypto.createHash('sha256').update(Uint8Array.from(fs.readFileSync(markdown))).digest('hex') !== state.markdownSha256)) return undefined;
     return state.state;
   } catch { return undefined; }
@@ -100,7 +101,7 @@ export interface SynthesisOptions {
   evidenceVerifier?: (receipt: Receipt) => boolean;
   /**
    * Promote a verified receipt only if it carries a stated lesson. Off by default, so existing callers
-   * are unchanged; the `uig` CLI turns it on. Without it every verified action becomes a lesson named
+   * are unchanged; the `uigates` CLI turns it on. Without it every verified action becomes a lesson named
    * after the action, and a ledger fills with "delete the temporary harness".
    */
   requireLesson?: boolean;
@@ -146,7 +147,7 @@ export function verifyEvidenceFiles(root: string, receipt: Receipt): boolean {
  * Only `status === 'verified'` packs are recommendations.
  */
 export function loadKnowledge(projectRoot: string): KnowledgePack[] {
-  const dir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
+  const dir = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs');
   if (!fs.existsSync(dir)) return [];
   const out: KnowledgePack[] = [];
   for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort()) {
@@ -186,7 +187,7 @@ export class CESynthesizer {
     this.projectRoot = projectRoot;
     this.evidenceVerifier = options.evidenceVerifier ?? (r => verifyEvidenceFiles(projectRoot, r));
     this.requireLesson = options.requireLesson ?? false;
-    this.knowledgeDir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
+    this.knowledgeDir = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs');
     this.ensureDir();
   }
 
@@ -283,11 +284,11 @@ export class CESynthesizer {
 
   private write(filePath: string, state: PackState): void {
     const markdown = this.render(state);
-    const stateDir = path.join(this.projectRoot, '.uig', 'knowledge', 'pack_state');
-    fs.mkdirSync(stateDir, { recursive: true });
+    const packStateDir = path.join(stateDir(this.projectRoot), 'knowledge', 'pack_state');
+    fs.mkdirSync(packStateDir, { recursive: true });
     // Preserve failures before the first success without publishing a recommendation.
     if (state.verified.length) fs.writeFileSync(filePath, markdown);
-    fs.writeFileSync(path.join(stateDir, path.basename(filePath) + '.json'), JSON.stringify({
+    fs.writeFileSync(path.join(packStateDir, path.basename(filePath) + '.json'), JSON.stringify({
       state, markdownSha256: state.verified.length ? crypto.createHash('sha256').update(markdown).digest('hex') : null,
     }));
   }

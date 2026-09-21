@@ -7,28 +7,28 @@ import { spawnSync } from 'node:child_process';
 import { referencedScripts } from './audit';
 
 /**
- * `uig audit` compares what changed in the working tree with what `.uig/` says was authorized and
+ * `uigates audit` compares what changed in the working tree with what `.uigates/` says was authorized and
  * verified. These tests drive the real CLI in a throwaway git repository, the way a session would,
  * and check each finding it can raise, including the ones a scripted "good" agent never triggers.
  *
  * Run: npx tsx --test plugins/uigates/cli/audit_test.ts
  */
 
-const bin = path.resolve(__dirname, '../../../bin/uig.mjs');
+const bin = path.resolve(__dirname, '../../../bin/uigates.mjs');
 // A real verifier: it can fail. The audit rejects commands that cannot.
 const verifier = (file: string) => `node -e "process.exit(require('fs').existsSync('${file}') ? 0 : 1)"`;
 
 interface Result { status: number | null; out: string; err: string }
 
 function repo(t: any) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-audit-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-audit-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const env = { ...process.env, UIG_PRINCIPAL: 'gerardo', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+  const env = { ...process.env, UIGATES_PRINCIPAL: 'gerardo', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
   const run = (cmd: string, args: string[]): Result => {
     const r = spawnSync(cmd, args, { cwd: root, env, encoding: 'utf8' });
     return { status: r.status, out: r.stdout, err: r.stderr };
   };
-  const uig = (...args: string[]) => run(process.execPath, [bin, ...args]);
+  const uigates = (...args: string[]) => run(process.execPath, [bin, ...args]);
   const write = (file: string, text: string) => {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), text);
@@ -47,21 +47,21 @@ function repo(t: any) {
   run('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'base']);
   const base = run('git', ['rev-parse', 'HEAD']).out.trim();
 
-  const start = (domain = 'src/') => id(uig('start', 'change something', '--domain', domain, '--success', 'verifier passes'), 'Intent');
+  const start = (domain = 'src/') => id(uigates('start', 'change something', '--domain', domain, '--success', 'verifier passes'), 'Intent');
   const propose = (intent: string, resource: string, impact = 'low') =>
-    uig('propose', intent, '--action', `edit ${resource}`, '--resource', resource, '--impact', impact, '--rationale', 'needed', '--risk', 'local', '--verify', 'check');
-  const audit = (...extra: string[]) => uig('audit', '--base', base, ...extra);
+    uigates('propose', intent, '--action', `edit ${resource}`, '--resource', resource, '--impact', impact, '--rationale', 'needed', '--risk', 'local', '--verify', 'check');
+  const audit = (...extra: string[]) => uigates('audit', '--base', base, ...extra);
 
   /** The proper order: propose, authorize, then change the file, then verify. */
   const cycle = (intent: string, resource: string, command = verifier(resource), body = 'changed\n') => {
     const prop = id(propose(intent, resource), 'Proposal');
-    const auth = id(uig('authorize', prop), 'Authorization');
+    const auth = id(uigates('authorize', prop), 'Authorization');
     write(resource, body);
-    const receipt = uig('receipt', auth, '--run', command);
+    const receipt = uigates('receipt', auth, '--run', command);
     return { prop, auth, receipt };
   };
 
-  return { root, run, uig, write, id, base, start, propose, cycle, audit };
+  return { root, run, uigates, write, id, base, start, propose, cycle, audit };
 }
 
 test('a verified, authorized change audits clean and the audit is read-only on its own records', t => {
@@ -69,15 +69,15 @@ test('a verified, authorized change audits clean and the audit is read-only on i
   const intent = p.start();
   assert.equal(p.cycle(intent, 'src/a.js').receipt.status, 0);
 
-  const before = fs.readdirSync(path.join(p.root, '.uig/receipts')).length;
+  const before = fs.readdirSync(path.join(p.root, '.uigates/receipts')).length;
   const r = p.audit();
   assert.equal(r.status, 0, r.out + r.err);
   assert.match(r.out, /1\/1 changed file\(s\) verified/);
   assert.match(r.out, /1\/1 receipt\(s\) CLI-produced with intact hashes/);
-  assert.equal(fs.readdirSync(path.join(p.root, '.uig/receipts')).length, before);
+  assert.equal(fs.readdirSync(path.join(p.root, '.uigates/receipts')).length, before);
 
   const json = JSON.parse(p.audit('--json').out);
-  assert.deepEqual(json.files.map((f: any) => f.path), ['src/a.js'], '.uig/ is the record, not a change');
+  assert.deepEqual(json.files.map((f: any) => f.path), ['src/a.js'], '.uigates/ is the record, not a change');
   assert.ok(!json.findings.some((f: any) => f.severity === 'FAIL'));
 });
 
@@ -94,7 +94,7 @@ test('a change nobody authorized fails coverage', t => {
 test('an authorized change with no receipt fails coverage', t => {
   const p = repo(t);
   const intent = p.start();
-  const auth = p.id(p.uig('authorize', p.id(p.propose(intent, 'src/a.js'), 'Proposal')), 'Authorization');
+  const auth = p.id(p.uigates('authorize', p.id(p.propose(intent, 'src/a.js'), 'Proposal')), 'Authorization');
   assert.ok(auth);
   p.write('src/a.js', 'changed\n');
   const r = p.audit();
@@ -125,7 +125,7 @@ test('evidence altered after the receipt fails its hash', t => {
   const p = repo(t);
   const intent = p.start();
   p.cycle(intent, 'src/a.js');
-  const dir = path.join(p.root, '.uig/evidence');
+  const dir = path.join(p.root, '.uigates/evidence');
   fs.appendFileSync(path.join(dir, fs.readdirSync(dir)[0]), '\nexit: 0 (edited)\n');
   const r = p.audit();
   assert.equal(r.status, 1);
@@ -135,10 +135,10 @@ test('evidence altered after the receipt fails its hash', t => {
 test('asserted evidence is flagged, because the agent, not the CLI, claimed the outcome', t => {
   const p = repo(t);
   const intent = p.start();
-  const auth = p.id(p.uig('authorize', p.id(p.propose(intent, 'src/a.js'), 'Proposal')), 'Authorization');
+  const auth = p.id(p.uigates('authorize', p.id(p.propose(intent, 'src/a.js'), 'Proposal')), 'Authorization');
   p.write('src/a.js', 'changed\n');
   p.write('notes.txt', 'i tested it\n');
-  const receipt = p.uig('receipt', auth, '--evidence', 'notes.txt', '--outcome', 'works', '--delta', 'None');
+  const receipt = p.uigates('receipt', auth, '--evidence', 'notes.txt', '--outcome', 'works', '--delta', 'None');
   assert.equal(receipt.status, 0, receipt.err);
   const r = p.audit();
   assert.match(r.out, /WARN {2}\[evidence\] .*asserted by the agent/);
@@ -151,7 +151,7 @@ test('the engine now gates a CI edit even when the agent declares it low impact'
   const prop = p.propose(intent, '.gitlab-ci.yml', 'low');
   assert.match(prop.out, /Authority: gated/);
   assert.match(prop.out, /CRITICAL \(CI configuration\)/);
-  const refused = p.uig('authorize', p.id(prop, 'Proposal'));
+  const refused = p.uigates('authorize', p.id(prop, 'Proposal'));
   assert.equal(refused.status, 1, 'the agent cannot authorize it on its own');
   assert.match(refused.err, /may not approve its own gated action/);
 });
@@ -161,9 +161,9 @@ test('a project-wide resource carries a CI edit past the engine; the audit catch
   const intent = p.start('/');
   const prop = p.propose(intent, '.', 'low');
   assert.match(prop.out, /Authority: delegated/, 'a resource of "." names no file, so the engine cannot know');
-  const auth = p.id(p.uig('authorize', p.id(prop, 'Proposal')), 'Authorization');
+  const auth = p.id(p.uigates('authorize', p.id(prop, 'Proposal')), 'Authorization');
   p.write('.gitlab-ci.yml', 'stages: [test, lint]\n');
-  assert.equal(p.uig('receipt', auth, '--run', verifier('.gitlab-ci.yml')).status, 0);
+  assert.equal(p.uigates('receipt', auth, '--run', verifier('.gitlab-ci.yml')).status, 0);
   const r = p.audit();
   assert.equal(r.status, 1);
   assert.match(r.out, /FAIL {2}\[gate\] \.gitlab-ci\.yml \(CI configuration\) changed under delegated authority only/);
@@ -175,9 +175,9 @@ test('a gated CI edit passes the gate check but still cannot prove the principal
   const p = repo(t);
   const intent = p.start('.gitlab-ci.yml');
   const prop = p.id(p.propose(intent, '.gitlab-ci.yml', 'low'), 'Proposal');
-  const auth = p.id(p.uig('authorize', prop, '--approved-by', 'gerardo'), 'Authorization');
+  const auth = p.id(p.uigates('authorize', prop, '--approved-by', 'gerardo'), 'Authorization');
   p.write('.gitlab-ci.yml', 'stages: [test, lint]\n');
-  assert.equal(p.uig('receipt', auth, '--run', verifier('.gitlab-ci.yml')).status, 0);
+  assert.equal(p.uigates('receipt', auth, '--run', verifier('.gitlab-ci.yml')).status, 0);
   const r = p.audit();
   assert.equal(r.status, 0, r.out);
   assert.match(r.out, /principal consent cannot be proven from records/);
@@ -199,12 +199,12 @@ test('auditing a project with no records reports the changes as uncovered and cr
   const r = p.audit();
   assert.equal(r.status, 1);
   assert.match(r.out, /src\/a\.js changed with no authorization covering it/);
-  assert.ok(!fs.existsSync(path.join(p.root, '.uig')), 'audit must not create .uig/');
+  assert.ok(!fs.existsSync(path.join(p.root, '.uigates')), 'audit must not create .uigates/');
 });
 
 test('an unknown base commit is a usage error, not an empty pass', t => {
   const p = repo(t);
-  const r = p.uig('audit', '--base', 'no-such-commit');
+  const r = p.uigates('audit', '--base', 'no-such-commit');
   assert.equal(r.status, 2);
   assert.match(r.err, /git rev-parse/);
 });
@@ -245,7 +245,7 @@ test('referencedScripts finds what a command runs, and only that', () => {
 
 test('a verification script outside the project is flagged: only its output is in the record', t => {
   const p = repo(t);
-  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-outside-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-outside-'));
   t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
   const script = path.join(outside, 'verify.sh');
   fs.writeFileSync(script, 'test -f src/a.js\n');
