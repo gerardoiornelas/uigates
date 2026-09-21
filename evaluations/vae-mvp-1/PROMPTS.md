@@ -24,8 +24,15 @@ mkdir -p ~/Documents/Git/uig-trials/results
 git log --oneline -1        # note the base commit for this task
 ```
 
-Then start the session **from that directory**, and check before pasting the prompt:
+Start the session from that directory with provider overrides removed. A shell that exports `ANTHROPIC_BASE_URL` (a proxy or another provider) or an `ANTHROPIC_API_KEY` meant for another endpoint would make the agent something other than Claude on Anthropic's API, which invalidates the trial:
 
+```bash
+cd ~/Documents/Git/uig-trials/vae-trial-1 && env -u ANTHROPIC_BASE_URL -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u OPENAI_BASE_URL claude
+```
+
+Check before pasting the prompt:
+
+0. `/status` shows Anthropic's own endpoint and a Claude model. Record the model. If it shows a proxy address (for example `127.0.0.1:8787`) or a non-Claude model, stop.
 1. The session's working directory is `vae-trial-1`. Run `pwd` in the session if unsure. Run 1 failed here.
 2. Typing `/uigates:` offers `uigates:uig`. If it does not, the plugin did not load (workspace trust not accepted, or wrong directory). Stop; do not fall back to `/uig`, which may be your personal skill.
 3. The agent's first `uig` command is `npx --no-install uig ...`. If it writes to `~/.uig/tracking.jsonl` or mentions `okf:receipt`, the wrong skill ran: void the run.
