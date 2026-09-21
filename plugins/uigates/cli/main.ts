@@ -9,6 +9,7 @@ import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitiv
 import type { DenialKind } from '../core/GovernanceEngine';
 import { audit, AuditError, failed, formatReport } from './audit';
 import { enforcementOn, runHook } from './hook';
+import { claudeTranscriptDir, DEFAULT_WEIGHTS, formatCost, reportFor, type Usage } from './cost';
 import { envSetting, hasBothStateDirs, stateDir, stateDirName } from '../core/names';
 
 /**
@@ -36,6 +37,9 @@ const HELP = `UI-GATES engine CLI
   uigates approve knowledge|canon "<action>" --principal <id>
   uigates retire "<action>" --principal <id>
   uigates status [intentId]
+  uigates cost [--transcripts <file|dir>...] [--weights input=1,cacheWrite=1.25,cacheRead=0.1,output=5] [--json]
+            where a session's tokens went, from the host's transcript (Claude Code's, by default): weighted total,
+            tool calls and output by kind, how much was UI-GATES commands, discovery before the first edit. Read-only.
   uigates audit [--base <commit>] [--intent <id>] [--json]
             score a session: do the changes since <commit> (default HEAD) match what was authorized and verified?
             Read-only; exits 1 on any FAIL. It reads the records, so it shows consistency, not good behaviour.
@@ -147,6 +151,7 @@ async function main(): Promise<void> {
       run: { type: 'string' }, 'timeout-sec': { type: 'string' }, lesson: { type: 'string' },
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
+      transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
     },
   });
   const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
@@ -171,6 +176,23 @@ async function main(): Promise<void> {
     else if (want !== undefined) fail('Usage: uigates enforce [on|off]');
     const viaEnv = process.env.UIGATES_ENFORCE === '1' ? ' (UIGATES_ENFORCE=1)' : process.env.UIG_ENFORCE === '1' ? ' (UIG_ENFORCE=1, the older name)' : '';
     console.log(`Enforcement: ${enforcementOn(root) ? 'on' : 'off'}${viaEnv}`);
+    return;
+  }
+
+  // Cost is read-only too: it reads the host's transcripts and the intent records, and writes nothing.
+  if (command === 'cost') {
+    const weights: Usage = { ...DEFAULT_WEIGHTS };
+    for (const part of (v.weights ?? '').split(',').filter(Boolean)) {
+      const [key, value] = part.split('=');
+      if (!(key in weights) || !Number.isFinite(Number(value))) fail(`--weights takes ${Object.keys(DEFAULT_WEIGHTS).join('=n,')}=n; got "${part}".`);
+      (weights as unknown as Record<string, number>)[key] = Number(value);
+    }
+    const given = v.transcripts ?? [claudeTranscriptDir(root)];
+    const files = given.flatMap(p => fs.existsSync(p) && fs.statSync(p).isDirectory()
+      ? fs.readdirSync(p).filter(f => f.endsWith('.jsonl')).map(f => path.join(p, f)) : [p]).filter(f => fs.existsSync(f));
+    if (!files.length) return fail(`No transcripts found. Pass --transcripts <file|dir>. (Looked in ${given.join(', ')}.)`);
+    const reports = reportFor(root, files.sort(), weights);
+    console.log(v.json ? JSON.stringify(reports, null, 2) : formatCost(reports));
     return;
   }
 
