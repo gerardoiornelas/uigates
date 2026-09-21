@@ -81,6 +81,13 @@ export interface Receipt {
   evidence: string[]; // Links to logs, test results, commit hashes
   verifiedAt: Date;
   taskId?: string; // the Proposal.taskId this execution advanced
+  /**
+   * What the next agent should know, stated by the agent when it records the receipt. A receipt
+   * proves the action worked; it says nothing about what the action teaches. Without this the
+   * synthesizer can only restate the action, which is how a ledger fills with process.
+   * The claim is the agent's own and is not verified.
+   */
+  lesson?: string;
 }
 
 export interface Policy {
