@@ -110,7 +110,80 @@ function readRecords<T>(root: string, dir: string, findings: Finding[]): T[] {
 const ms = (iso: unknown) => Date.parse(String(iso));
 const isDeltaFree = (r: Receipt) => r.delta.trim().toLowerCase() === 'none';
 
-function checkEvidence(root: string, receipt: Receipt, findings: Finding[]): ReceiptRow {
+/** A script a verification command runs. `receipt --run` hashes the command's output, never the script. */
+export interface ScriptRef { path: string; cwd: string }
+
+const INTERPRETERS = new Set(['bash', 'sh', 'zsh', 'python', 'python3', 'node', 'tsx', 'ts-node', 'ruby', 'perl', 'php', 'deno', 'bun']);
+// With one of these the code is in the command itself, so the record already holds it.
+const INLINE_FLAGS = new Set(['-c', '-e', '-m', '-p', '--eval', '--print']);
+const SYSTEM_PATH = /^\/(usr|bin|sbin|opt|dev|etc|System|Library|nix)\//;
+
+/** Split a shell command into simple commands. Enough shell to find what runs, not a shell parser. */
+function segments(command: string): string[][] {
+  // A heredoc body is code, not commands: read up to the line that opens it.
+  const src = /<<-?\s*['"]?\w+/.test(command) ? command.split('\n')[0] : command;
+  const out: string[][] = [[]];
+  let cur = '', has = false, quote: string | null = null;
+  const word = () => { if (has) out[out.length - 1].push(cur); cur = ''; has = false; };
+  const sep = () => { word(); if (out[out.length - 1].length) out.push([]); };
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (quote) { if (c === quote) quote = null; else cur += c; continue; }
+    if (c === "'" || c === '"') { quote = c; has = true; continue; }
+    if (c === '\n') { sep(); continue; }
+    if (/\s/.test(c)) { word(); continue; }
+    if ((c === '&' && src[i + 1] === '&') || (c === '|' && src[i + 1] === '|')) { sep(); i++; continue; }
+    if (c === ';' || c === '|' || c === '(' || c === ')') { sep(); continue; }
+    cur += c; has = true;
+  }
+  word();
+  return out.filter(words => words.length);
+}
+
+/** The script files a verification command runs, with the directory each runs from. Inline code (`node -e`) is not listed: it is already in the command. */
+export function referencedScripts(command: string): ScriptRef[] {
+  const refs: ScriptRef[] = [];
+  let cwd = '.';
+  for (const words of segments(command)) {
+    const w = words.filter(word => !/^\d*[<>]/.test(word)); // redirections and heredoc markers are not arguments
+    while (w.length && (/^\w+=/.test(w[0]) || ['env', 'npx', 'exec'].includes(w[0]))) w.shift();
+    if (!w.length) continue;
+    if (w[0] === 'cd') {
+      if (w[1]) cwd = w[1].startsWith('/') || w[1].startsWith('~') ? w[1] : path.posix.normalize(path.posix.join(cwd, w[1]));
+      continue;
+    }
+    const head = w[0];
+    if (INTERPRETERS.has(path.posix.basename(head))) {
+      const args = w.slice(1);
+      if (args.some(a => INLINE_FLAGS.has(a))) continue;
+      const script = args.find(a => !a.startsWith('-'));
+      if (script && !/[*?${}]/.test(script)) refs.push({ path: script, cwd });
+    } else if (head.includes('/') && !/[*?${}]/.test(head)) {
+      refs.push({ path: head, cwd });
+    }
+  }
+  return refs;
+}
+
+/** Where the logic behind a script's output can be found: nowhere outside the project, or nowhere at all. */
+function whereIsScript(root: string, base: string, ref: ScriptRef): 'outside' | 'missing' | null {
+  if (ref.path.startsWith('~')) return 'outside';
+  const real = fs.realpathSync(root);
+  let resolved = path.posix.isAbsolute(ref.path) ? path.posix.normalize(ref.path) : path.posix.normalize(path.posix.join(ref.cwd, ref.path));
+  if (ref.cwd.startsWith('~')) return 'outside';
+  if (path.posix.isAbsolute(resolved)) {
+    if (SYSTEM_PATH.test(resolved)) return null;
+    const rel = path.relative(real, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) return 'outside';
+    resolved = rel.split(path.sep).join('/');
+  }
+  if (resolved === '..' || resolved.startsWith('../')) return 'outside';
+  if (fs.existsSync(path.join(root, resolved))) return null;
+  const inBase = spawnSync('git', ['cat-file', '-e', `${base}:${resolved}`], { cwd: root });
+  return inBase.status === 0 ? null : 'missing';
+}
+
+function checkEvidence(root: string, baseRef: string, receipt: Receipt, findings: Finding[]): ReceiptRow {
   const row: ReceiptRow = { id: receipt.id, authorizationId: receipt.authorizationId, kind: 'asserted', hashOk: true, delta: receipt.delta };
   const base = fs.realpathSync(root);
 
@@ -138,6 +211,15 @@ function checkEvidence(root: string, receipt: Receipt, findings: Finding[]): Rec
     if (row.command && VACUOUS.some(v => v.test(row.command!))) {
       findings.push({ severity: 'FAIL', check: 'evidence', message: `Receipt ${receipt.id}: the verification command "${row.command}" cannot fail, so it verifies nothing.` });
     }
+    // The command's output is hashed; the script it runs is not. Where that script lives decides whether anyone can re-run the check.
+    for (const ref of row.command ? referencedScripts(row.command) : []) {
+      const where = whereIsScript(root, baseRef, ref);
+      if (where === 'outside') {
+        findings.push({ severity: 'WARN', check: 'evidence', message: `Receipt ${receipt.id}: its verification runs ${ref.path}, which is outside the project, so the logic behind this evidence is not in the record. Only its output is hashed.` });
+      } else if (where === 'missing') {
+        findings.push({ severity: 'WARN', check: 'evidence', message: `Receipt ${receipt.id}: its verification runs ${ref.path}, which is no longer in the working tree or the base commit, so the check behind this evidence cannot be re-run.` });
+      }
+    }
     // The receipt's claim must agree with what the log says happened.
     if (row.exit !== undefined && (row.exit === '0') !== isDeltaFree(receipt)) {
       findings.push({ severity: 'FAIL', check: 'evidence', message: `Receipt ${receipt.id}: the log says exit ${row.exit} but the receipt records delta "${receipt.delta}".` });
@@ -163,7 +245,7 @@ export function audit(root: string, base: string, intentFilter?: string): AuditR
   // Receipts first: they say which authorizations were ever verified.
   const receiptRows = receipts.map(r => {
     if (!authById.has(r.authorizationId)) findings.push({ severity: 'FAIL', check: 'records', message: `Receipt ${r.id} cites authorization ${r.authorizationId}, which is not on record.` });
-    return checkEvidence(root, r, findings);
+    return checkEvidence(root, base, r, findings);
   });
   const verifiedAuth = (id: string) => receipts.some(r => r.authorizationId === id && isDeltaFree(r));
 

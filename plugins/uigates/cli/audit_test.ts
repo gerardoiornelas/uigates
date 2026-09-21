@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { referencedScripts } from './audit';
 
 /**
  * `uig audit` compares what changed in the working tree with what `.uig/` says was authorized and
@@ -218,4 +219,66 @@ test('--intent scores one task without borrowing another task\'s authority', t =
   const alone = p.audit('--intent', one);
   assert.equal(alone.status, 1, 'src/b.js belongs to task two, so task one cannot claim it');
   assert.match(alone.out, /src\/b\.js changed with no authorization covering it/);
+});
+
+// --- Verification whose logic is not in the record -------------------------------------------
+// `receipt --run` hashes a command's output, never the script it runs. Two real cases from the
+// first trial: a script in a temp directory outside the project, and an in-repo script that was
+// deleted after it ran.
+
+test('referencedScripts finds what a command runs, and only that', () => {
+  const paths = (command: string) => referencedScripts(command).map(r => (r.cwd === '.' ? r.path : `${r.cwd}:${r.path}`));
+  assert.deepEqual(paths('python3 scripts/a.py'), ['scripts/a.py']);
+  assert.deepEqual(paths('node -e "process.exit(1)"'), [], 'inline code is already in the command');
+  assert.deepEqual(paths('python3 -m pytest scripts'), []);
+  assert.deepEqual(paths('bash /tmp/x/verify.sh'), ['/tmp/x/verify.sh']);
+  assert.deepEqual(paths('test ! -e scripts/h.py && git status --short | grep -v x'), [], 'a path that is only tested for is not run');
+  assert.deepEqual(paths('cd sub && python3 t.py'), ['sub:t.py'], 'a cd changes where the script is looked for');
+  assert.deepEqual(paths('(cd vae-vtt/backend && python3 -m pytest calibration -q)'), []);
+  assert.deepEqual(paths('FOO=1 python3 a.py'), ['a.py']);
+  assert.deepEqual(paths('npx tsx a.ts'), ['a.ts']);
+  assert.deepEqual(paths('node --test scripts/*.test.mjs'), [], 'a glob names no single script');
+  assert.deepEqual(paths('./run.sh --fast'), ['./run.sh']);
+  assert.deepEqual(paths('bash "scripts/my check.sh"'), ['scripts/my check.sh']);
+  assert.deepEqual(paths("python3 - <<'PY'\nimport os\nos.system('rm -rf x')\nPY"), [], 'a heredoc body is code, not commands');
+});
+
+test('a verification script outside the project is flagged: only its output is in the record', t => {
+  const p = repo(t);
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-outside-'));
+  t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
+  const script = path.join(outside, 'verify.sh');
+  fs.writeFileSync(script, 'test -f src/a.js\n');
+  const intent = p.start('/');
+  assert.equal(p.cycle(intent, 'src/a.js', `bash ${script}`).receipt.status, 0);
+  const r = p.audit();
+  assert.equal(r.status, 0, 'a warning, not a failure: the check may be perfectly good');
+  assert.match(r.out, /WARN {2}\[evidence\] .*verify\.sh, which is outside the project/);
+});
+
+test('an in-repo verification script deleted after it ran is flagged: the check cannot be re-run', t => {
+  const p = repo(t);
+  const intent = p.start('/');
+  p.write('check.sh', 'test -f src/a.js\n');
+  assert.equal(p.cycle(intent, 'src/a.js', 'bash check.sh').receipt.status, 0);
+  fs.rmSync(path.join(p.root, 'check.sh'));
+  const r = p.audit();
+  assert.equal(r.status, 0);
+  assert.match(r.out, /WARN {2}\[evidence\] .*check\.sh, which is no longer in the working tree or the base commit/);
+});
+
+test('a verification script that is still in the repo is not flagged', t => {
+  const p = repo(t);
+  const intent = p.start('/');
+  p.write('check.sh', 'test -f src/a.js\n');
+  assert.equal(p.cycle(intent, 'src/a.js', 'bash check.sh').receipt.status, 0);
+  assert.doesNotMatch(p.audit().out, /verification runs|which is (no longer|outside)/);
+});
+
+test('testing that a deleted script is gone is not running it', t => {
+  const p = repo(t);
+  const intent = p.start('/');
+  const command = `test ! -e gone.sh && node -e "process.exit(require('fs').existsSync('src/a.js') ? 0 : 1)"`;
+  assert.equal(p.cycle(intent, 'src/a.js', command).receipt.status, 0);
+  assert.doesNotMatch(p.audit().out, /gone\.sh/);
 });

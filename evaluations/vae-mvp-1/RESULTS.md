@@ -121,6 +121,10 @@ That reply told the agent where to put the file **and** to delete it afterwards.
 
 **What it does not show.** That agents learn from the ledger; that the gate-class fix catches a `low` declaration; that any of this holds across models or tasks (n = 3, one model, one repo, and one intervention in task 1). The audit and the engine cannot yet see the two gaps that recurred: authorization after the write, and verification logic that lives outside the record.
 
+## After the trial: findings 4 and 10 are now detected
+
+`uig audit` gained a check for verification whose logic is not in the record: a `--run` command that executes a script outside the project, or one that no longer exists in the working tree or the base commit. Run over the trial's own records (`--base 111ed08`), it flags exactly the three receipts behind those findings (task 1's two harness runs, task 3's `verify_ci.sh`) and, as designed, stays silent on task 1's cleanup receipt, which only tests that the deleted script is gone. It is a warning, not a failure: the checks were good, but nobody can re-run them. Scores above were taken before this check existed; they are unchanged.
+
 ## To fill in by hand
 
 - Model and version for each scored run (`/status`).
