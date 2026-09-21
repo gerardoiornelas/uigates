@@ -27,9 +27,9 @@ Two stages. Stage 2 runs only if stage 1 passes.
 | --- | --- |
 | Agent | Claude Code with the `uig` skill and the `uig` CLI |
 | Repo | VAE (`gitlab.com/violetek/vae`), worktree `~/Documents/Git/uig-trials/vae-trial-1` |
-| Base commit | Trial branch `trial/uig-mvp-1` at `d85b6b6` ("Trial setup"), on top of `4ec3baa` from `task/table-domain-and-field-ledger`. Local only, not pushed |
+| Base commit | Trial branch `trial/uig-mvp-1` at `111ed08` ("Trial setup"), on top of `4ec3baa` from `task/table-domain-and-field-ledger`. Local only, not pushed |
 | CLI | `npx --no-install uig` resolves to a shim in the worktree's gitignored `node_modules/.bin`, which runs `<uigates>/bin/uig.mjs`. State lands in `.uig/` there |
-| Skill | The condensed Claude Code copy, committed in the setup commit. It names the CLI commands and leaves flag details to `uig help`; that is part of what is tested |
+| Skill | The `uigates` plugin, installed as a project skills-directory plugin at `.claude/skills/uigates/` and invoked as `/uigates:uig`. Condensed; leaves flag details to `uig help`, which is part of what is tested |
 | Prompts and protocol | Frozen in [evaluations/vae-mvp-1/PROMPTS.md](../evaluations/vae-mvp-1/PROMPTS.md), with the score sheet |
 
 **The worktree lives outside `violetek/` on purpose.** The parent `violetek/CLAUDE.md` describes VAE as a Node/Vue app with MUI and lucide-react rules. The real repo is a tabletop game monorepo (Python SAM backend, React/Vite frontend, Astro codex, OKF lore). An agent under `violetek/` would inherit that false description.
@@ -122,13 +122,16 @@ Jev or any model-based classifier and its enforcement, pre-tool-use hooks and mi
 
 1. **`npx uig help` could run someone else's package. Fixed 2026-09-21.** The skill told agents to detect the CLI with `npx uig help`. Where the CLI is not installed, npx resolves `uig` from the npm registry, and an unrelated package of that name exists (version 0.0.0, modified 2022; not run). All five skill copies, `docs/namespace.md` and the sync test now use `npx --no-install uig help`, and the README and namespace docs say why. Verified: with no shim present the command fails with "could not determine executable to run" and installs nothing; with the shim it resolves. The trial worktree carries the fixed skill.
 2. **Reuse is matched by exact action text.** The synthesizer keys a lesson by its normalized action string, so lessons about similar work worded differently never combine. A candidate is not expected in this trial. See "What stage 2 can and cannot show" in the prompts file. It is the strongest case for the semantic-match idea from the Jev discussion, and it is a finding regardless of how the trial goes.
-3. **The Claude copy of the skill is condensed.** It does not spell out the CLI flags or the retry-after-delta form; an agent has to run `uig help` to learn them. Whether agents do is measured, not assumed.
+3. **The skill is condensed.** It does not spell out the CLI flags or the retry-after-delta form; an agent has to run `uig help` to learn them. Whether agents do is measured, not assumed.
+
+4. **A personal skill shadows a project skill of the same name. Fixed 2026-09-21.** Run 1 was void. A personal `~/.claude/skills/uig` (v0.3.0, 2026-09-13, from before the engine CLI, with its own `~/.uig/tracking.jsonl` and `okf:receipt` instructions) overrides a project `/uig`, and the session had also started in the wrong directory, so the trial skill never loaded. Per the Claude Code docs the order is enterprise, then personal, then project. The fix is the one `docs/namespace.md` already recommended: ship the skill as the `uigates` plugin, which is namespaced (`/uigates:uig`) and cannot be shadowed. This also removes any need to park or edit the personal skill. Run 1 is kept as a void, not scored. It did show two things: the audit fails an unrecorded change (`FAIL [coverage]`, no intents), and the old skill closed with "provenance recorded" after the agent said it had written no receipt.
+5. **Plugin loading is not verified from here.** The plugin manifest passes `claude plugin validate`, but the headless CLI could not authenticate in the environment that prepared the trial, so a live load was not observed. The pre-session check in the prompts file (type `/uigates:` and see `uigates:uig`) is what confirms it.
 
 ## Order of work
 
 1. ~~Build `uig audit`.~~ Done 2026-09-21.
 2. ~~Confirm the task 1 gap and close the CI-gating gap.~~ Done 2026-09-21: task 1 replaced (see above); CI gating fixed in the engine.
 3. ~~Freeze the three prompts, including the task 1 verification requirement.~~ Done: [PROMPTS.md](../evaluations/vae-mvp-1/PROMPTS.md).
-4. ~~Copy the skill into the trial worktree and commit it as "trial setup".~~ Done: `8760dca`, then `d85b6b6` with the `--no-install` fix.
+4. ~~Copy the skill into the trial worktree and commit it as "trial setup".~~ Done: `8760dca`, then `d85b6b6` (`--no-install`), then `111ed08` (installed as the `uigates` plugin after run 1 was void).
 5. Run stage 1 (tasks 1 to 3, a new session each); score each with the audit and the score sheet.
 6. Read the failures and fix the skill from what they show; then decide on stage 2.

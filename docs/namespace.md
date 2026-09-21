@@ -23,7 +23,8 @@ Use the exact name `uig`; do not rely on prefix matching. This avoids ambiguity 
 | Host | Included layout | Invocation |
 | --- | --- | --- |
 | Codex | `plugins/uigates/` or `skills/uig/` | `$uigates:uig` as a plugin skill, or `$uig` when installed as a standalone skill. |
-| Claude Code | `.claude/skills/uig/` | `/uig` in the project. |
+| Claude Code (plugin) | `plugins/uigates/` (manifest at `.claude-plugin/plugin.json`) | `/uigates:uig`. Namespaced, so an unrelated personal or project `uig` skill cannot shadow it. |
+| Claude Code (standalone) | `.claude/skills/uig/` | `/uig` in the project. A personal `~/.claude/skills/uig` **overrides** a project skill of the same name (enterprise, then personal, then project), so prefer the plugin. |
 | Gemini CLI / Gemini API agents | `.agents/skills/uig/` | `gemini skills list`, then invoke the discovered skill. |
 
 The platform copies are intentionally small compatibility entrypoints. `skills/uig/SKILL.md` is the portable source to keep in sync; `skills/ui-gates/SKILL.md` is the long-form reference.
@@ -41,6 +42,6 @@ npx --no-install uig help
 
 ## Installation guidance
 
-For a project-local installation, copy `skills/uig/` into the appropriate host layout above. For Codex plugin distribution, install the `uigates` plugin so its skill remains plugin-qualified and cannot silently collide with an unrelated global `uig` skill.
+For a project-local installation, copy `skills/uig/` into the appropriate host layout above. For plugin distribution, install the `uigates` plugin (Codex: `.codex-plugin`; Claude Code: `.claude-plugin`) so its skill remains plugin-qualified and cannot silently collide with an unrelated global `uig` skill. To try it locally in Claude Code without a marketplace, put `plugins/uigates`'s manifest and `skills/` in `.claude/skills/uigates/` of a project (loads as `uigates@skills-dir` once the workspace is trusted), or run `claude --plugin-dir plugins/uigates`.
 
 See the official host documentation: [Codex skills](https://learn.chatgpt.com/docs/build-skills), [Claude Code skills](https://code.claude.com/docs/en/skills), and [Gemini custom agents and skills](https://ai.google.dev/gemini-api/docs/custom-agents).

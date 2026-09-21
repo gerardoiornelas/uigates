@@ -49,5 +49,12 @@ for (const file of COPIES) {
 }
 line(read('.claude/skills/uig/SKILL.md') === read('.agents/skills/uig/SKILL.md'), '.claude and .agents copies are identical');
 
+console.log('\n=== PLUGIN MANIFESTS: the namespace is /uigates:uig, so the name must agree everywhere ===\n');
+const codex = JSON.parse(read('plugins/uigates/.codex-plugin/plugin.json'));
+const claudeCode = JSON.parse(read('plugins/uigates/.claude-plugin/plugin.json'));
+line(claudeCode.name === 'uigates', 'the Claude Code manifest is named "uigates", which makes the skill /uigates:uig');
+line(codex.name === claudeCode.name, 'the Codex and Claude Code manifests share one name');
+line(codex.version === claudeCode.version, `the manifests share one version (${codex.version} / ${claudeCode.version})`);
+
 console.log(`\n=== SUMMARY: ${failed ? `${failed} problem(s)` : 'all copies consistent'} ===`);
 process.exit(failed ? 1 : 0);

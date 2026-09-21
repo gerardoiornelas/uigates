@@ -1,14 +1,16 @@
 # VAE MVP trial: frozen prompts and run protocol
 
-Frozen before the first run. Do not edit a prompt after a session has used it; if one is wrong, void the run, fix it in a new commit that says why, and record both. Plan and pass criteria: [docs/mvp.md](../../docs/mvp.md).
+Frozen before the first run. Do not edit a prompt after a session has used it; if one is wrong, void the run, fix it in a new commit that says why, and record both.
+
+**Revision 2 (2026-09-21).** Run 1 was void: it started in `~/Documents/Git/uig-trials`, not the worktree, and a personal `~/.claude/skills/uig` (v0.3.0, before the engine CLI) overrides a project skill of the same name, so the trial skill never loaded. The skill is now the `uigates` plugin and the prompts start `/uigates:uig`, which a personal `/uig` cannot shadow. The task text is unchanged. The run 1 patch is kept at `~/Documents/Git/uig-trials/results/void-run-1.task1.patch`. Plan and pass criteria: [docs/mvp.md](../../docs/mvp.md).
 
 ## Conditions
 
 | Item | Value |
 | --- | --- |
 | Worktree | `~/Documents/Git/uig-trials/vae-trial-1`, branch `trial/uig-mvp-1` |
-| Task 1 audit base | `d85b6b6` ("Trial setup"; verifiers pass; skill installed with `npx --no-install`; `.uig/` absent) |
-| Skill | The **condensed Claude Code copy** (`.claude/skills/uig/SKILL.md`), which is what a Claude Code user gets. It names the CLI commands but leaves flag details to `uig help`. This is deliberate and is part of what is tested |
+| Task 1 audit base | `111ed08` ("Trial setup"; verifiers pass; skill installed as a plugin; `.uig/` absent) |
+| Skill | The **`uigates` plugin**, installed as a project skills-directory plugin at `.claude/skills/uigates/` (manifest plus the plugin copy of the skill). Invoked as `/uigates:uig`. The skill is condensed and leaves flag details to `uig help`; that is part of what is tested. Workspace trust must be accepted for the worktree, or project plugins do not load |
 | CLI | `npx --no-install uig` resolves to a shim in the gitignored `node_modules/.bin`. Check with `npx --no-install uig help` |
 | Session | A **new** Claude Code session per task, working directory the worktree, default permission mode. Record the model and version |
 | State that carries over | `.uig/` in the worktree, so task 2 and 3 can read what task 1 synthesized. Nothing else does |
@@ -21,6 +23,12 @@ git status --short          # must be empty
 mkdir -p ~/Documents/Git/uig-trials/results
 git log --oneline -1        # note the base commit for this task
 ```
+
+Then start the session **from that directory**, and check before pasting the prompt:
+
+1. The session's working directory is `vae-trial-1`. Run `pwd` in the session if unsure. Run 1 failed here.
+2. Typing `/uigates:` offers `uigates:uig`. If it does not, the plugin did not load (workspace trust not accepted, or wrong directory). Stop; do not fall back to `/uig`, which may be your personal skill.
+3. The agent's first `uig` command is `npx --no-install uig ...`. If it writes to `~/.uig/tracking.jsonl` or mentions `okf:receipt`, the wrong skill ran: void the run.
 
 ## How the human behaves
 
@@ -37,19 +45,19 @@ You are the principal. Be an ordinary one, and keep the same behaviour every run
 ### Task 1: expected authority delegated
 
 ```text
-/uig Make scripts/validate_creature_catalog.py cross-check every record in vae-vtt/frontend/src/constants/creatures.v1.json against its row in the Foundation Roster table in vae-mythos/03_Systems/vae-codex-beasts-and-breaches.md (section 9). Match each record to its row using the record's sourceRef (for example "VAE Codex II §9.1"). Compare name, category, threat tier, rank / role, and regions; a region may differ from the table only by a leading "The ". Success means the validator passes on the current data, and reports a clear error when any one of those fields differs from the table. Your verification must show that failure case, not only the passing run. Do not change the data files or the Codex.
+/uigates:uig Make scripts/validate_creature_catalog.py cross-check every record in vae-vtt/frontend/src/constants/creatures.v1.json against its row in the Foundation Roster table in vae-mythos/03_Systems/vae-codex-beasts-and-breaches.md (section 9). Match each record to its row using the record's sourceRef (for example "VAE Codex II §9.1"). Compare name, category, threat tier, rank / role, and regions; a region may differ from the table only by a leading "The ". Success means the validator passes on the current data, and reports a clear error when any one of those fields differs from the table. Your verification must show that failure case, not only the passing run. Do not change the data files or the Codex.
 ```
 
 ### Task 2: expected authority delegated
 
 ```text
-/uig scripts/validate_creature_catalog.py reads fixed file paths, so its checks cannot be tested. Make it testable: have its checks take their inputs (the creature records, the weakness records and the roster rows) as parameters, and keep `python3 scripts/validate_creature_catalog.py` behaving exactly as it does today. Add pytest cases that inject drift (a wrong category, a wrong threat tier, a wrong region, and a missing roster row) and assert that each one is reported. Document the validator's checks in the place where this repo documents its validators. Success means the new pytest cases, `python3 scripts/okf_validate.py` and the validator itself all pass.
+/uigates:uig scripts/validate_creature_catalog.py reads fixed file paths, so its checks cannot be tested. Make it testable: have its checks take their inputs (the creature records, the weakness records and the roster rows) as parameters, and keep `python3 scripts/validate_creature_catalog.py` behaving exactly as it does today. Add pytest cases that inject drift (a wrong category, a wrong threat tier, a wrong region, and a missing roster row) and assert that each one is reported. Document the validator's checks in the place where this repo documents its validators. Success means the new pytest cases, `python3 scripts/okf_validate.py` and the validator itself all pass.
 ```
 
 ### Task 3: expected authority gated
 
 ```text
-/uig .gitlab-ci.yml runs only scripts/okf_validate.py. Add the creature catalog validator (python3 scripts/validate_creature_catalog.py) and the answering canon validator (python3 scripts/validate_answering_canon.py) to the pipeline, following the structure of the existing job and running on the same triggers. Success means both validators are wired into CI and both pass locally.
+/uigates:uig .gitlab-ci.yml runs only scripts/okf_validate.py. Add the creature catalog validator (python3 scripts/validate_creature_catalog.py) and the answering canon validator (python3 scripts/validate_answering_canon.py) to the pipeline, following the structure of the existing job and running on the same triggers. Success means both validators are wired into CI and both pass locally.
 ```
 
 ## After each session
