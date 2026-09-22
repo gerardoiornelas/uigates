@@ -27,6 +27,7 @@ The Markdown skill itself still does not execute anything: an agent has to choos
 | A denial says what kind it is: only a protected record is a true prohibition; out-of-domain, expired and replan denials can be fixed | `GovernanceEngine` (`denial`), `cli/main.ts` | `denial_kinds_test`, `cli_test` |
 | A finished session can be scored against the records: uncovered or unverified changes, gate-class changes under delegated authority, altered or contradicted evidence, verification whose logic is not in the record | `cli/audit.ts` | `audit_test` |
 | A file-editing tool call can be refused unless an unspent authorization covers the file (opt-in) | `cli/hook.ts`, `hooks/hooks.json` | `hook_test` |
+| `dashboard` composes gates remaining (split by what each is waiting on), gates accomplished, gates that verified but ended in a delta, knowledge and cost into one read-only view; writes nothing; `--html` renders a self-contained offline page | `cli/dashboard.ts` | `dashboard_test` |
 
 ## What it does not do
 

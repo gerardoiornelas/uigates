@@ -11,6 +11,7 @@ import { audit, AuditError, failed, formatReport } from './audit';
 import { enforcementOn, runHook } from './hook';
 import { buildBrief, DEFAULT_BRIEF_BUDGET } from '../intelligence/ce/brief';
 import { claudeTranscriptDir, DEFAULT_WEIGHTS, formatCost, reportFor, type Usage } from './cost';
+import { buildDashboard, formatDashboard, renderDashboardHtml } from './dashboard';
 import { envSetting, hasBothStateDirs, stateDir, stateDirName } from '../core/names';
 
 /**
@@ -44,6 +45,10 @@ const HELP = `UI-GATES engine CLI
   uigates approve knowledge|canon "<action>" --principal <id>
   uigates retire "<action>" --principal <id>
   uigates status [intentId]
+  uigates dashboard [--json] [--html <file>] [--transcripts <file|dir>...] [--weights ...]
+            one view of what a session has to show: intents, gates remaining (with what each is waiting on) and
+            gates cleared, knowledge packs, and cost (same data as \`cost\`, auto-finding this project's transcripts).
+            Read-only. --html writes a self-contained offline page; re-run to refresh it.
   uigates brief [--paths <a,b,...> | --intent <id>] [--budget <tokens>] [--json]
             earlier verified work near those files, capped at a token budget (default 400); start prints it for its domain
   uigates cost [--transcripts <file|dir>...] [--weights input=1,cacheWrite=1.25,cacheRead=0.1,output=5] [--json]
@@ -172,6 +177,7 @@ async function main(): Promise<void> {
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
       transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
       paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' }, authorize: { type: 'boolean' }, synthesize: { type: 'boolean' },
+      html: { type: 'string' },
     },
   });
   const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
@@ -487,6 +493,23 @@ async function main(): Promise<void> {
         const unspent = ownAuth.filter(a => !receipts.some(r => r.authorizationId === a.id));
         for (const a of unspent) console.log(`  awaiting receipt: ${describeAuthorization(a)}`);
       }
+      return;
+    }
+
+    case 'dashboard': {
+      const weights: Usage = { ...DEFAULT_WEIGHTS };
+      for (const part of (v.weights ?? '').split(',').filter(Boolean)) {
+        const [key, value] = part.split('=');
+        if (!(key in weights) || !Number.isFinite(Number(value))) fail(`--weights takes ${Object.keys(DEFAULT_WEIGHTS).join('=n,')}=n; got "${part}".`);
+        (weights as unknown as Record<string, number>)[key] = Number(value);
+      }
+      const report = buildDashboard(root, rt, { transcripts: v.transcripts, weights });
+      if (v.html) {
+        fs.writeFileSync(path.resolve(v.html), renderDashboardHtml(report));
+        console.log(`Wrote ${path.resolve(v.html)}. Re-run this command to refresh it; it is a static snapshot, not a live page.`);
+      }
+      if (v.json) console.log(JSON.stringify(report, null, 2));
+      else if (!v.html) console.log(formatDashboard(report));
       return;
     }
 
