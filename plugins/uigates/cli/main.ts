@@ -7,6 +7,7 @@ import { Runtime } from '../core/Runtime';
 import { CESynthesizer, lessonProblem, loadKnowledge } from '../intelligence/ce/synthesizer';
 import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
 import type { DenialKind } from '../core/GovernanceEngine';
+import { LocalStubBackend, type DecisionBackend } from '../core/DecisionBackend';
 import { audit, AuditError, failed, formatReport } from './audit';
 import { enforcementOn, runHook } from './hook';
 import { buildBrief, DEFAULT_BRIEF_BUDGET } from '../intelligence/ce/brief';
@@ -35,6 +36,10 @@ const HELP = `UI-GATES engine CLI
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
   uigates authorize <proposalId> [--approved-by <principal>]
             (propose --authorize does both in one call for a delegated action; a gated one still waits for the principal)
+  uigates advise <proposalId>
+            spike (docs/compound-engineering/graph-jev-aar.md): an advisory-only judgment (APPROVE/DENY/ESCALATE) from a
+            pluggable DecisionBackend, printed alongside what \`authorize\` would decide. Read-only; grants nothing.
+            The only backend today is a local stub with no real judgment — it defers every gated proposal to ESCALATE.
   uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>] [--synthesize]
             --synthesize also promotes the lesson now and prints only what changed, so no separate synthesize call is needed [--lesson <text>]
   uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
@@ -366,6 +371,20 @@ async function main(): Promise<void> {
         return;
       }
       issueAuthorization(rt, proposal, intent, evaluation.suggestedState, v['approved-by']);
+      return;
+    }
+
+    case 'advise': {
+      const proposal = rt.state.getProposal(need(positionals[0], 'proposalId (first argument)'));
+      if (!proposal) return fail('Proposal not found.');
+      const intent = rt.state.getIntent(proposal.intentId);
+      if (!intent) return fail('Intent not found.');
+      const evaluation = rt.gov.evaluate(proposal, intent);
+      const backend: DecisionBackend = new LocalStubBackend();
+      const decision = backend.evaluate(proposal, intent, evaluation);
+      console.log(`Engine: ${evaluation.denied ? 'denied' : evaluation.suggestedState} — ${evaluation.rationale}`);
+      console.log(`Advisory (${decision.backend}): ${decision.verdict} — ${decision.rationale}`);
+      console.log('This is advisory only. It grants no authority: gated work still needs uigates authorize --approved-by <principal>.');
       return;
     }
 
