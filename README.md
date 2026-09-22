@@ -65,29 +65,34 @@ Each promoted artifact must link to its source, supporting evidence, and reuse g
 ## Repository layout
 
 ```text
-docs/                 # Public system specification
-skills/uig/           # Portable short-form skill: `uig`
-skills/ui-gates/      # Formal UI-GATES skill
-plugins/uigates/      # Installable Codex plugin (skills), the authority/synthesis engine, and the `uig` CLI
-bin/uig.mjs           # `npx uig ...` launcher for the engine CLI
+docs/                        # Public system specification
+skills/uigates/              # The portable skill: `uigates`
+skills/uigates/references/   # Long-form reference and knowledge-artifact templates
+plugins/uigates/             # Installable plugin (Codex and Claude Code), the authority/synthesis engine, and the `uigates` CLI
+bin/uigates.mjs              # `npx uigates ...` launcher for the engine CLI (`uig` is a one-release alias)
 ```
 
 Project integrations should keep their own committed local context bundles and generated Graphify outputs. See [the integration model](docs/architecture.md).
 
 ## Engine CLI
 
-The skill is guidance; the engine is what makes a session verifiable. When the package is installed (`npm install github:gerardoiornelas/uigates`), `/uig` records the workflow through the `uig` CLI instead of prose:
+The skill is guidance; the engine is what makes a session verifiable. When the package is installed (`npm install github:gerardoiornelas/uigates`), `/uigates` records the workflow through the `uigates` CLI instead of prose:
 
 ```bash
-npx uig start "add CSV export" --domain src/ --success "tests pass"
-npx uig propose <intentId> --action "add export" --resource src/export.js --impact low \
+npx uigates start "add CSV export" --domain src/ --success "tests pass"
+npx uigates propose <intentId> --action "add export" --resource src/export.js --impact low \
   --rationale "requested feature" --risk "local" --verify "npm test"
-npx uig authorize <proposalId>                     # delegated work; gated work needs the principal's yes
-npx uig receipt <authorizationId> --run "npm test" # the CLI runs the command and hashes the output as evidence
-npx uig synthesize <intentId> && npx uig knowledge
+npx uigates authorize <proposalId>                     # delegated work; gated work needs the principal's yes
+npx uigates receipt <authorizationId> --run "npm test" # the CLI runs the command and hashes the output as evidence
+npx uigates synthesize <intentId> && npx uigates knowledge
+npx uigates audit --base <commit>                      # score a finished session against the records; read-only
+npx uigates enforce on                                 # opt in: refuse a file edit no unspent authorization covers (Claude Code hook)
+npx uigates brief --paths src/export.js            # what earlier verified work found near these files, capped at a token budget (start prints it too)
+npx uigates cost                                   # where a session's tokens went, from the agent's transcript; read-only
+npx uigates propose ... --authorize                # propose and authorize a delegated action in one call
 ```
 
-Each call is a separate process, so the engine rebuilds its authority ledger, receipts and cumulative risk from the write-once records in `.uig/`. Synthesis is `CESynthesizer`: only receipts traceable to issued authority, with hash-bound evidence, become lessons; reuse across distinct intents makes a candidate; a principal promotes it.
+Use `npx --no-install uigates ...` if you are not sure the package is installed, so npx never installs or runs a package from the registry (it cancels instead). (`uigates` is not on npm today, but the older name `uig` is: a different, unrelated package, which is why the skills never use it.) Each call is a separate process, so the engine rebuilds its authority ledger, receipts and cumulative risk from the write-once records in `.uigates/`. Synthesis is `CESynthesizer`: only receipts traceable to issued authority, with hash-bound evidence, become lessons; reuse across distinct intents makes a candidate; a principal promotes it.
 
 What this does not do: the records are plain files the agent's own process can also write, so they are tamper-evident to the engine's checks, not tamper-proof against a hostile agent, and the agent-facing rules (never self-approve, never run `approve`) are instructions the model follows. Real enforcement of what an agent may touch remains the host's sandbox and permission prompts. See the [engine README](plugins/uigates/core/README.md).
 
@@ -118,6 +123,7 @@ Read [evidence-backed coding-agent learning](docs/certified-learning.md) for the
 - [Knowledge model](docs/knowledge-model.md)
 - [Terminology](docs/terminology.md)
 - [Roadmap](docs/roadmap.md)
+- [Token savings: what other tools do, what is measured, what is not](docs/token-savings.md)
 - [Namespace and installation](docs/namespace.md)
-- [Short `uig` skill](skills/uig/SKILL.md)
-- [UI-GATES skill](skills/ui-gates/SKILL.md)
+- [The `uigates` skill](skills/uigates/SKILL.md)
+- [Long-form reference](skills/uigates/references/long-form.md)

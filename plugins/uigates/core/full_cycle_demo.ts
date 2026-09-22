@@ -12,7 +12,7 @@ import { Intent, Proposal } from './types/primitives';
 
 /** A real filesystem smoke test, not a coding-agent learning benchmark. */
 async function runFullCycle() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uig-cycle-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-cycle-'));
   const state = new StateStore(root), receipts = new ReceiptStore();
   const gov = new GovernanceEngine([], undefined, receipts);
   const intent: Intent = { id:'demo',principalId:'demo-principal',goal:'Write and verify a local note',constraints:['temporary directory only'],successEvidence:['read-back comparison'],authorityDomain:['notes.txt'],expiry:new Date(Date.now()+60000),createdAt:new Date() };

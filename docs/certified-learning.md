@@ -36,12 +36,12 @@ An unsuccessful or incomplete evaluation is retained and reports `inconclusive-o
 Commands use an explicit store directory outside the agent workspaces:
 
 ```sh
-node plugins/uigates/learning/cli.mjs discover /tmp/uig-store discovery.json
-node plugins/uigates/learning/cli.mjs propose /tmp/uig-store lesson.json
-node plugins/uigates/learning/cli.mjs freeze /tmp/uig-store plan.json
-UIG_CODEX=/path/to/codex node plugins/uigates/learning/cli.mjs run /tmp/uig-store plan-id
-node plugins/uigates/learning/cli.mjs certify /tmp/uig-store plan-id
-node plugins/uigates/learning/cli.mjs retrieve /tmp/uig-store query.json
+node plugins/uigates/learning/cli.mjs discover /tmp/uigates-store discovery.json
+node plugins/uigates/learning/cli.mjs propose /tmp/uigates-store lesson.json
+node plugins/uigates/learning/cli.mjs freeze /tmp/uigates-store plan.json
+UIGATES_CODEX=/path/to/codex node plugins/uigates/learning/cli.mjs run /tmp/uigates-store plan-id
+node plugins/uigates/learning/cli.mjs certify /tmp/uigates-store plan-id
+node plugins/uigates/learning/cli.mjs retrieve /tmp/uigates-store query.json
 ```
 
 The [Workboard experiment](../evaluations/real-project-v1/) provides concrete discovery specifications, synthesis, frozen plans and verifiers. The general modules do not know Workboard's schema or contain its repairs. The experiment's synthesis model call is counted separately; `propose` validates and stores its candidate rather than pretending the deterministic store authored semantic guidance.

@@ -4,51 +4,114 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { parseArgs } from 'util';
 import { Runtime } from '../core/Runtime';
-import { CESynthesizer, loadKnowledge } from '../intelligence/ce/synthesizer';
+import { CESynthesizer, lessonProblem, loadKnowledge } from '../intelligence/ce/synthesizer';
 import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
+import type { DenialKind } from '../core/GovernanceEngine';
+import { LocalStubBackend, TypeSafeJevBackend, type DecisionBackend } from '../core/DecisionBackend';
+import { audit, AuditError, failed, formatReport } from './audit';
+import { enforcementOn, runHook } from './hook';
+import { buildBrief, DEFAULT_BRIEF_BUDGET } from '../intelligence/ce/brief';
+import { claudeTranscriptDir, DEFAULT_WEIGHTS, formatCost, reportFor, type Usage } from './cost';
+import { buildDashboard, formatDashboard, renderDashboardHtml } from './dashboard';
+import { envSetting, hasBothStateDirs, stateDir, stateDirName } from '../core/names';
 
 /**
- * `uig` — the engine CLI an agent uses to make a /uig session real: intents, proposals and
+ * `uigates` — the engine CLI an agent uses to make a /uigates session real: intents, proposals and
  * authorizations pass through GovernanceEngine, evidence is produced (not claimed) by this tool,
- * and synthesis is CESynthesizer. State lives in `<root>/.uig/` and is rebuilt on every call.
+ * and synthesis is CESynthesizer. State lives in `<root>/.uigates/` (`.uig/` in a project that already has it) and is rebuilt on every call.
  */
 
 class UsageError extends Error {}
 
 const HELP = `UI-GATES engine CLI
 
-  uig start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...]
+  uigates begin "<goal>" --domain <path>... --success <evidence>... --action <text> --resource <path> --impact low|medium|high
+            --rationale <text> --risk <text> --verify <plan> [--no-brief]
+            start + propose --authorize in one call, for the usual one-action task. Every flag is checked first, so a missing one
+            creates nothing. A gated (medium or high impact) action still waits for the principal.
+  uigates start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...] [--no-brief]
             [--principal <id>] [--expires-in-hours <n> | --expires <ISO date>] [--actor <id>...]
-  uig propose <intentId> --action <text> --resource <path> --impact low|medium|high
-            --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>]
+  uigates propose <intentId> --action <text> --resource <path> --impact low|medium|high
+            --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>] [--authorize]
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
-  uig authorize <proposalId> [--approved-by <principal>]
-  uig receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>]
-  uig receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None>
-  uig synthesize <intentId>
-  uig knowledge
-  uig approve knowledge|canon "<action>" --principal <id>
-  uig retire "<action>" --principal <id>
-  uig status [intentId]
+  uigates authorize <proposalId> [--approved-by <principal> | --jev]
+            (propose --authorize does both in one call for a delegated action; a gated one still waits for the principal
+            unless --jev is given). --jev (docs/compound-engineering/graph-jev-aar.md, solo-workflow direction) asks the
+            configured DecisionBackend (UIGATES_JEV_BACKEND, default a local stub that always defers to ESCALATE) and
+            grants authority directly on APPROVE, gated or not — no carve-out for gate-class resources. DENY and
+            ESCALATE grant nothing; ESCALATE still needs --approved-by from the principal. authorizedBy records the
+            backend's own name (e.g. "jev:typesafe-jev"), never a human's identity, for an honest audit trail.
+  uigates advise <proposalId>
+            an advisory-only judgment (APPROVE/DENY/ESCALATE) from the configured DecisionBackend, printed alongside
+            what \`authorize\` would decide. Read-only; grants nothing, unlike \`authorize --jev\`. Useful as a dry run.
+            Set UIGATES_JEV_BACKEND=typesafe with TYPESAFE_API_KEY in the environment (or a gitignored .env in the
+            cwd — see .env.example) to call TypeSafe's Jev model instead of the local stub — this sends the action,
+            resource and rationale to api.typesafe.ai.
+  uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>] [--synthesize]
+            --synthesize also promotes the lesson now and prints only what changed, so no separate synthesize call is needed [--lesson <text>]
+  uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
+            --lesson is what the next agent should know that the action's title does not say. Only a receipt
+            that carries one is promoted to a lesson, and it can only be stated here: a receipt cannot be amended.
+  uigates synthesize <intentId>
+  uigates knowledge
+  uigates approve knowledge|canon "<action>" --principal <id>
+  uigates retire "<action>" --principal <id>
+  uigates status [intentId]
+  uigates dashboard [--json] [--html <file>] [--transcripts <file|dir>...] [--weights ...]
+            one view of what a session has to show: intents, gates remaining (with what each is waiting on) and
+            gates cleared, knowledge packs, and cost (same data as \`cost\`, auto-finding this project's transcripts).
+            Read-only. --html writes a self-contained offline page; re-run to refresh it.
+  uigates brief [--paths <a,b,...> | --intent <id>] [--budget <tokens>] [--json]
+            earlier verified work near those files, capped at a token budget (default 400); start prints it for its domain
+  uigates cost [--transcripts <file|dir>...] [--weights input=1,cacheWrite=1.25,cacheRead=0.1,output=5] [--json]
+            where a session's tokens went, from the host's transcript (Claude Code's, by default): weighted total,
+            tool calls and output by kind, how much was UI-GATES commands, discovery before the first edit. Read-only.
+  uigates audit [--base <commit>] [--intent <id>] [--json]
+            score a session: do the changes since <commit> (default HEAD) match what was authorized and verified?
+            Read-only; exits 1 on any FAIL. It reads the records, so it shows consistency, not good behaviour.
 
-  --root <dir>    project root (default: UIG_ROOT or the current directory)
+  uigates enforce [on|off]
+            when on, the Claude Code hook (uigates hook pre-write) refuses a file edit that no unspent authorization covers.
+            Off by default. It sees only the file-editing tools, not writes made through Bash.
+  uigates hook pre-write    reads a PreToolUse payload on stdin; exit 2 blocks the edit, any other exit allows it
 
-Records live in <root>/.uig/. Delegated actions inside the intent's scope are authorized by the
-intent itself. A gated action needs the principal's approval in conversation first; only then pass
---approved-by. Principal decisions (approve, retire, --approved-by) must come from the user, never
+  --root <dir>    project root (default: UIGATES_ROOT or the current directory)
+
+Records live in <root>/.uigates/ (or <root>/.uig/ in a project that already has it). Delegated actions inside the intent's scope are authorized by the
+intent itself. A gated action needs either the principal's approval in conversation first (then pass
+--approved-by) or authorize --jev to grant it on a DecisionBackend's own APPROVE (see authorize's own help above).
+Principal decisions (approve, retire, --approved-by) must come from the user, never
 from the agent. For the learning/evaluation harness: node plugins/uigates/learning/cli.mjs help`;
 
 const MAX_LOG = 1_000_000;
 
 function fail(message: string): never { throw new UsageError(message); }
 
+/**
+ * Opt-in only, per docs/compound-engineering/graph-jev-aar.md: the default is the local stub
+ * (no external call). UIGATES_JEV_BACKEND=typesafe (or UIG_JEV_BACKEND=typesafe) switches to a live
+ * TypeSafe Jev call and requires TYPESAFE_API_KEY in the environment — never pass a key on the
+ * command line or hardcode one, and never as a project default: it's a per-invocation choice.
+ */
+function resolveDecisionBackend(): DecisionBackend {
+  const choice = envSetting('JEV_BACKEND');
+  if (!choice || choice === 'local') return new LocalStubBackend();
+  if (choice === 'typesafe') {
+    const apiKey = process.env.TYPESAFE_API_KEY;
+    if (!apiKey) fail('UIGATES_JEV_BACKEND=typesafe requires TYPESAFE_API_KEY in the environment.');
+    return new TypeSafeJevBackend({ apiKey });
+  }
+  return fail(`Unknown UIGATES_JEV_BACKEND "${choice}". Use "local" (default) or "typesafe".`);
+}
+
 function principalFor(root: string, given?: string): string {
   if (given) return given;
-  if (process.env.UIG_PRINCIPAL) return process.env.UIG_PRINCIPAL;
+  const fromEnv = envSetting('PRINCIPAL');
+  if (fromEnv) return fromEnv;
   const git = spawnSync('git', ['config', 'user.email'], { cwd: root, encoding: 'utf8' });
   const email = git.status === 0 ? git.stdout.trim() : '';
   if (email) return email;
-  return fail('No principal. Pass --principal <id>, set UIG_PRINCIPAL, or configure git user.email. The principal owns the intent and signs its authority.');
+  return fail('No principal. Pass --principal <id>, set UIGATES_PRINCIPAL, or configure git user.email. The principal owns the intent and signs its authority.');
 }
 
 function expiryFrom(hours?: string, iso?: string): Date {
@@ -98,6 +161,27 @@ function runVerification(rt: Runtime, receiptId: string, command: string, timeou
   return { ref: evidenceRef(rt.root, file), exitCode, timedOut };
 }
 
+/** What a denial means and what to do next, by kind. Only 'protected-record' is a true prohibition. */
+const DENIAL_HELP: Record<DenialKind, { label: string; next: string }> = {
+  'outside-domain': { label: 'outside the authorized domain', next: 'This is not a prohibition. Propose a project-relative path inside the intent\'s domain (temporary and verification files belong in the project too), or ask the principal to start a new intent with a wider domain.' },
+  'protected-record': { label: 'prohibited: protected record', next: 'UI-GATES records are written only by the uigates CLI and cannot be altered through the workflow. Do not retry.' },
+  'expired': { label: 'the intent has expired', next: 'Ask the principal for a new intent.' },
+  'wrong-actor': { label: 'actor not authorized under this intent', next: 'Ask the principal to add the actor to the intent, or start a new one.' },
+  'wrong-intent': { label: 'proposal belongs to a different intent', next: 'Propose under the intent it belongs to.' },
+  'replan-required': { label: 'a replan is required', next: 'Return to planning, then propose again with --replan-after, --root-cause and --revision.' },
+  'policy': { label: 'a policy refused it', next: 'Ask the principal.' },
+};
+
+/** Sign and record an authorization the engine has already approved, and say what it covers. */
+function issueAuthorization(rt: Runtime, proposal: Proposal, intent: Intent, state: Authorization['state'], approvedBy?: string): void {
+  const authorization = rt.gov.authorize(proposal, intent.principalId, state);
+  rt.state.saveAuthorization(authorization);
+  console.log(`Authorization: ${authorization.id}`);
+  console.log(`State: ${authorization.state}${authorization.state === 'gated' ? ` (approved by ${approvedBy})` : ' (delegated by the intent)'}`);
+  console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
+  console.log(`Next: do the work, then: uigates receipt ${authorization.id} --run "<verification command>"`);
+}
+
 function describeAuthorization(a: Authorization): string {
   return `${a.id}  ${a.state}  ${a.action} -> ${a.resource}`;
 }
@@ -118,70 +202,182 @@ async function main(): Promise<void> {
       action: { type: 'string' }, resource: { type: 'string' }, impact: { type: 'string' },
       rationale: { type: 'string' }, risk: { type: 'string' }, verify: { type: 'string' }, task: { type: 'string' },
       'replan-after': { type: 'string' }, 'root-cause': { type: 'string' }, revision: { type: 'string' },
-      run: { type: 'string' }, 'timeout-sec': { type: 'string' },
+      run: { type: 'string' }, 'timeout-sec': { type: 'string' }, lesson: { type: 'string' },
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
+      base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
+      transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
+      paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' }, authorize: { type: 'boolean' }, synthesize: { type: 'boolean' },
+      jev: { type: 'boolean' },
+      html: { type: 'string' },
     },
   });
-  const root = path.resolve(v.root ?? process.env.UIG_ROOT ?? process.cwd());
+  const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
   if (!fs.existsSync(root)) fail(`Project root does not exist: ${root}`);
+
+  // The hook runs on every file edit and must not fail closed: it handles its own errors and never reaches the catch below.
+  if (command === 'hook') {
+    const hookRoot = path.resolve(v.root ?? envSetting('ROOT') ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd());
+    let input = '';
+    try { input = fs.readFileSync(0, 'utf8'); } catch { /* no stdin: treated as an empty payload */ }
+    const result = runHook(hookRoot, input);
+    if (result.stderr) console.error(result.stderr);
+    process.exitCode = result.exit;
+    return;
+  }
+
+  if (command === 'enforce') {
+    const marker = path.join(stateDir(root), 'enforce');
+    const want = positionals[0];
+    if (want === 'on') { fs.mkdirSync(path.dirname(marker), { recursive: true }); fs.writeFileSync(marker, 'on\n'); }
+    else if (want === 'off') fs.rmSync(marker, { force: true });
+    else if (want !== undefined) fail('Usage: uigates enforce [on|off]');
+    const viaEnv = process.env.UIGATES_ENFORCE === '1' ? ' (UIGATES_ENFORCE=1)' : process.env.UIG_ENFORCE === '1' ? ' (UIG_ENFORCE=1, the older name)' : '';
+    console.log(`Enforcement: ${enforcementOn(root) ? 'on' : 'off'}${viaEnv}`);
+    return;
+  }
+
+  // Brief is read-only: it reads lessons and, for --intent, the intent's domain.
+  if (command === 'brief') {
+    const budget = v.budget === undefined ? DEFAULT_BRIEF_BUDGET : Number(v.budget);
+    if (!Number.isFinite(budget) || budget < 60) fail('--budget must be a number of tokens, at least 60.');
+    let query = (v.paths ?? '').split(',').map(x => x.trim()).filter(Boolean);
+    if (v.intent) {
+      const file = path.join(stateDir(root), 'intents', `${v.intent}.json`);
+      if (!fs.existsSync(file)) fail(`Intent ${v.intent} not found.`);
+      query = query.concat(JSON.parse(fs.readFileSync(file, 'utf8')).authorityDomain ?? []);
+    }
+    if (!query.length) fail('Name the files: --paths <a,b,...> or --intent <id>.');
+    const brief = buildBrief(root, query, budget);
+    console.log(v.json ? JSON.stringify(brief, null, 2) : brief.text);
+    return;
+  }
+
+  // Cost is read-only too: it reads the host's transcripts and the intent records, and writes nothing.
+  if (command === 'cost') {
+    const weights: Usage = { ...DEFAULT_WEIGHTS };
+    for (const part of (v.weights ?? '').split(',').filter(Boolean)) {
+      const [key, value] = part.split('=');
+      if (!(key in weights) || !Number.isFinite(Number(value))) fail(`--weights takes ${Object.keys(DEFAULT_WEIGHTS).join('=n,')}=n; got "${part}".`);
+      (weights as unknown as Record<string, number>)[key] = Number(value);
+    }
+    const given = v.transcripts ?? [claudeTranscriptDir(root)];
+    const files = given.flatMap(p => fs.existsSync(p) && fs.statSync(p).isDirectory()
+      ? fs.readdirSync(p).filter(f => f.endsWith('.jsonl')).map(f => path.join(p, f)) : [p]).filter(f => fs.existsSync(f));
+    if (!files.length) return fail(`No transcripts found. Pass --transcripts <file|dir>. (Looked in ${given.join(', ')}.)`);
+    const reports = reportFor(root, files.sort(), weights);
+    console.log(v.json ? JSON.stringify(reports, null, 2) : formatCost(reports));
+    return;
+  }
+
+  // Audit is read-only, so it runs before Runtime, which creates the state directory and rebuilds engine state.
+  if (command === 'audit') {
+    try {
+      const report = audit(root, v.base ?? 'HEAD', v.intent);
+      console.log(v.json ? JSON.stringify(report, null, 2) : formatReport(report));
+      if (failed(report)) process.exitCode = 1;
+    } catch (error) {
+      if (error instanceof AuditError) fail(error.message);
+      throw error;
+    }
+    return;
+  }
+
   const rt = new Runtime(root);
+  if (hasBothStateDirs(root)) console.warn(`Warning: both .uigates/ and .uig/ exist. Records are read from ${stateDirName(root)}/ and the other directory is ignored.`);
   if (rt.orphans.length) console.warn(`Warning: ${rt.orphans.length} authorization(s) lack their proposal or intent and authorize nothing: ${rt.orphans.join(', ')}`);
+
+  const startIntent = (): Intent => {
+    const goal = need(positionals[0], 'goal (first argument)');
+    const authorityDomain = need(v.domain, 'domain');
+    const successEvidence = need(v.success, 'success');
+    const intent: Intent = {
+      id: newId('intent'),
+      principalId: principalFor(root, v.principal),
+      goal,
+      constraints: v.constraint ?? [],
+      successEvidence,
+      authorityDomain,
+      ...(v.actor ? { authorizedActors: v.actor } : {}),
+      expiry: expiryFrom(v['expires-in-hours'], v.expires),
+      createdAt: new Date(),
+    };
+    rt.state.saveIntent(intent);
+    console.log(`Intent: ${intent.id}`);
+    console.log(`Principal: ${intent.principalId}`);
+    console.log(`Delegated domain: ${intent.authorityDomain.join(', ')}`);
+    console.log(`Expires: ${new Date(intent.expiry).toISOString()}`);
+    if (!v['no-brief']) console.log(`\n${buildBrief(root, authorityDomain).text}`);
+    return intent;
+  };
+
+  const proposeAction = (intent: Intent, authorizeNow: boolean): void => {
+    const impact = need(v.impact, 'impact');
+    if (impact !== 'low' && impact !== 'medium' && impact !== 'high') fail('--impact must be low, medium or high.');
+    const replan = v['replan-after'] ? { after: v['replan-after'], rootCause: need(v['root-cause'], 'root-cause'), revision: need(v.revision, 'revision') } : undefined;
+    const proposal: Proposal = {
+      id: newId('prop'),
+      intentId: intent.id,
+      actorId: v.actor?.[0] ?? 'agent',
+      action: need(v.action, 'action'),
+      resource: need(v.resource, 'resource'),
+      rationale: need(v.rationale, 'rationale'),
+      impact,
+      risk: need(v.risk, 'risk'),
+      authorityRequested: impact === 'low' ? 'delegated' : 'gated',
+      verificationPlan: need(v.verify, 'verify'),
+      proposedAt: new Date(),
+      ...(v.task ? { taskId: v.task } : {}),
+      ...(replan ? { replan } : {}),
+    };
+    // Denied proposals are kept too: the audit trail should show what was attempted.
+    rt.state.saveProposal(proposal);
+    const evaluation = rt.gov.evaluate(proposal, intent);
+    console.log(`Proposal: ${proposal.id}`);
+    const help = evaluation.denied && evaluation.denial ? DENIAL_HELP[evaluation.denial] : undefined;
+    console.log(evaluation.denied ? `Authority: DENIED (${help?.label ?? 'not allowed'})` : `Authority: ${evaluation.suggestedState}`);
+    console.log(`Why: ${evaluation.rationale}`);
+    if (evaluation.denied) { if (help) console.log(`Next: ${help.next}`); process.exitCode = 1; return; }
+    if (evaluation.suggestedState === 'gated') {
+      // --authorize never speaks for the principal: a gated action always waits for their yes, then a separate authorize.
+      console.log('Next: ask the principal. Only after they approve, run: uigates authorize ' + proposal.id + ' --approved-by ' + intent.principalId);
+    } else if (authorizeNow) {
+      // The proposal is saved and evaluated before the authorization is written, so the order on record is unchanged.
+      issueAuthorization(rt, proposal, intent, evaluation.suggestedState);
+    } else {
+      console.log('Next: uigates authorize ' + proposal.id);
+    }
+  };
+
+  /** Promote what this intent's receipts earned and say only what changed. `synthesize` prints the whole ledger, which grows. */
+  const finishSynthesis = async (intentId: string): Promise<void> => {
+    const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger, { requireLesson: true });
+    await synth.synthesize(intentId);
+    for (const r of synth.getRejections()) console.log(`Rejected receipt ${r.receiptId}: ${r.reason}`);
+    for (const u of synth.getUnpromoted()) console.log(`Not promoted: ${u.receiptId} (${u.action}) stated no lesson. Next time, record the receipt with --lesson "<what the next agent should know>".`);
+    for (const e of synth.getEscalations()) console.log(`Needs the principal: ${e.kind} at ${e.level}: ${e.action}`);
+    console.log(`Knowledge: ${loadKnowledge(root).length} lesson(s) on record; uigates knowledge lists them.`);
+  };
 
   switch (command) {
     case 'start': {
-      const goal = need(positionals[0], 'goal (first argument)');
-      const authorityDomain = need(v.domain, 'domain');
-      const successEvidence = need(v.success, 'success');
-      const intent: Intent = {
-        id: newId('intent'),
-        principalId: principalFor(root, v.principal),
-        goal,
-        constraints: v.constraint ?? [],
-        successEvidence,
-        authorityDomain,
-        ...(v.actor ? { authorizedActors: v.actor } : {}),
-        expiry: expiryFrom(v['expires-in-hours'], v.expires),
-        createdAt: new Date(),
-      };
-      rt.state.saveIntent(intent);
-      console.log(`Intent: ${intent.id}`);
-      console.log(`Principal: ${intent.principalId}`);
-      console.log(`Delegated domain: ${intent.authorityDomain.join(', ')}`);
-      console.log(`Expires: ${new Date(intent.expiry).toISOString()}`);
+      startIntent();
       return;
     }
 
     case 'propose': {
       const intent = rt.state.getIntent(need(positionals[0], 'intentId (first argument)'));
       if (!intent) return fail('Intent not found.');
-      const impact = need(v.impact, 'impact');
-      if (impact !== 'low' && impact !== 'medium' && impact !== 'high') fail('--impact must be low, medium or high.');
-      const replan = v['replan-after'] ? { after: v['replan-after'], rootCause: need(v['root-cause'], 'root-cause'), revision: need(v.revision, 'revision') } : undefined;
-      const proposal: Proposal = {
-        id: newId('prop'),
-        intentId: intent.id,
-        actorId: v.actor?.[0] ?? 'agent',
-        action: need(v.action, 'action'),
-        resource: need(v.resource, 'resource'),
-        rationale: need(v.rationale, 'rationale'),
-        impact,
-        risk: need(v.risk, 'risk'),
-        authorityRequested: impact === 'low' ? 'delegated' : 'gated',
-        verificationPlan: need(v.verify, 'verify'),
-        proposedAt: new Date(),
-        ...(v.task ? { taskId: v.task } : {}),
-        ...(replan ? { replan } : {}),
-      };
-      // Denied proposals are kept too: the audit trail should show what was attempted.
-      rt.state.saveProposal(proposal);
-      const evaluation = rt.gov.evaluate(proposal, intent);
-      console.log(`Proposal: ${proposal.id}`);
-      console.log(`Authority: ${evaluation.suggestedState}${evaluation.denied ? ' (DENIED)' : ''}`);
-      console.log(`Why: ${evaluation.rationale}`);
-      if (evaluation.denied) { process.exitCode = 1; return; }
-      console.log(evaluation.suggestedState === 'gated'
-        ? 'Next: ask the principal. Only after they approve, run: uig authorize ' + proposal.id + ' --approved-by ' + intent.principalId
-        : 'Next: uig authorize ' + proposal.id);
+      proposeAction(intent, !!v.authorize);
+      return;
+    }
+
+    case 'begin': {
+      // Everything is checked before anything is written: a missing flag must not leave an intent behind.
+      need(positionals[0], 'goal (first argument)');
+      for (const [flag, value] of [['domain', v.domain], ['success', v.success], ['action', v.action], ['resource', v.resource], ['impact', v.impact], ['rationale', v.rationale], ['risk', v.risk], ['verify', v.verify]] as const) need(value, flag);
+      if (v.impact !== 'low' && v.impact !== 'medium' && v.impact !== 'high') fail('--impact must be low, medium or high.');
+      const intent = startIntent();
+      proposeAction(intent, true);
       return;
     }
 
@@ -193,19 +389,52 @@ async function main(): Promise<void> {
       const existing = rt.state.listAuthorizations().find(a => a.proposalId === proposal.id);
       if (existing) { console.log(`Already authorized: ${describeAuthorization(existing)}`); return; }
       const evaluation = rt.gov.evaluate(proposal, intent);
-      if (evaluation.denied) { console.error(`Denied: ${evaluation.rationale}`); process.exitCode = 1; return; }
+      if (evaluation.denied) { console.error(`Denied (${(evaluation.denial && DENIAL_HELP[evaluation.denial].label) ?? 'not allowed'}): ${evaluation.rationale}`); process.exitCode = 1; return; }
+
+      if (v.jev) {
+        // docs/compound-engineering/graph-jev-aar.md, solo-workflow direction: APPROVE grants authority
+        // directly, gated or not (decided 2026-09-22 — no carve-out for gate-class resources). DENY and
+        // ESCALATE grant nothing; authorizedBy records the backend's own name, never a human's identity.
+        const backend = resolveDecisionBackend();
+        const decision = await backend.evaluate(proposal, intent, evaluation);
+        if (decision.verdict !== 'APPROVE') {
+          console.error(`Jev (${decision.backend}): ${decision.verdict} — ${decision.rationale}`);
+          if (decision.verdict === 'ESCALATE') {
+            console.error(`Ask ${intent.principalId} and wait for a clear yes in this conversation. Then re-run with --approved-by ${intent.principalId}.`);
+          }
+          process.exitCode = 1;
+          return;
+        }
+        const authorization = rt.gov.authorizeViaAdvisory(proposal, decision, evaluation.suggestedState);
+        rt.state.saveAuthorization(authorization);
+        console.log(`Authorization: ${authorization.id}`);
+        console.log(`State: ${authorization.state} (approved by ${authorization.authorizedBy}: ${decision.rationale})`);
+        console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
+        console.log(`Next: do the work, then: uigates receipt ${authorization.id} --run "<verification command>"`);
+        return;
+      }
+
       if (evaluation.suggestedState === 'gated' && v['approved-by'] !== intent.principalId) {
         console.error(`Gated: ${evaluation.rationale}`);
         console.error(`Ask ${intent.principalId} and wait for a clear yes in this conversation. Then re-run with --approved-by ${intent.principalId}. The agent may not approve its own gated action.`);
         process.exitCode = 1;
         return;
       }
-      const authorization = rt.gov.authorize(proposal, intent.principalId, evaluation.suggestedState);
-      rt.state.saveAuthorization(authorization);
-      console.log(`Authorization: ${authorization.id}`);
-      console.log(`State: ${authorization.state}${authorization.state === 'gated' ? ` (approved by ${v['approved-by']})` : ' (delegated by the intent)'}`);
-      console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
-      console.log(`Next: do the work, then: uig receipt ${authorization.id} --run "<verification command>"`);
+      issueAuthorization(rt, proposal, intent, evaluation.suggestedState, v['approved-by']);
+      return;
+    }
+
+    case 'advise': {
+      const proposal = rt.state.getProposal(need(positionals[0], 'proposalId (first argument)'));
+      if (!proposal) return fail('Proposal not found.');
+      const intent = rt.state.getIntent(proposal.intentId);
+      if (!intent) return fail('Intent not found.');
+      const evaluation = rt.gov.evaluate(proposal, intent);
+      const backend: DecisionBackend = resolveDecisionBackend();
+      const decision = await backend.evaluate(proposal, intent, evaluation);
+      console.log(`Engine: ${evaluation.denied ? 'denied' : evaluation.suggestedState} — ${evaluation.rationale}`);
+      console.log(`Advisory (${decision.backend}): ${decision.verdict} — ${decision.rationale}`);
+      console.log('This is advisory only. It grants no authority: gated work still needs uigates authorize --approved-by <principal>.');
       return;
     }
 
@@ -216,6 +445,13 @@ async function main(): Promise<void> {
       if (!proposal) return fail('The authorization has no proposal on record.');
       if (rt.receipts.getByIntent(authorization.intentId).some(r => r.authorizationId === authorization.id)) {
         return fail(`Authorization ${authorization.id} already has a receipt. Each authorization covers one execution; propose again (with a replan, if it ended in a delta).`);
+      }
+
+      // Checked before anything runs: a receipt is one-shot per authorization and the verification command has side effects.
+      const lesson = v.lesson === undefined ? '' : v.lesson.replace(/\s+/g, ' ').trim();
+      if (v.lesson !== undefined) {
+        const problem = lessonProblem(lesson, authorization.action, proposal.verificationPlan);
+        if (problem) fail(`Lesson refused, and nothing was run or recorded: ${problem}. Re-run with a better --lesson, or without one to record the receipt with no lesson.`);
       }
 
       const id = newId('rec');
@@ -250,19 +486,25 @@ async function main(): Promise<void> {
         evidence,
         verifiedAt: new Date(),
         ...(proposal.taskId ? { taskId: proposal.taskId } : {}),
+        ...(lesson ? { lesson } : {}),
       };
       const verdict = rt.gov.ledger.admitReceipt(receipt);
       if (!verdict.ok) return fail(`Receipt refused: ${verdict.reason}`);
       rt.state.saveReceipt(receipt);
+      rt.receipts.record(receipt); // so a synthesis in this same process (--synthesize) sees it; a later process reads it from disk
       console.log(`Receipt: ${receipt.id}`);
       console.log(`Outcome: ${receipt.actualOutcome}`);
       console.log(`Delta: ${receipt.delta}`);
       console.log(`Evidence: ${receipt.evidence.join(', ')}`);
+      console.log(lesson
+        ? `Lesson: ${lesson}`
+        : 'Lesson: none. This receipt will not be promoted to a lesson, and one can only be stated when the receipt is recorded (a receipt cannot be amended).');
+      if (v.synthesize) await finishSynthesis(receipt.intentId);
       if (delta.trim().toLowerCase() !== 'none') {
-        console.log(`Next: return to planning. A retry needs: uig propose ... ${proposal.taskId ? `--task ${proposal.taskId} ` : ''}--replan-after ${receipt.id} --root-cause "<why>" --revision "<what changes>"`);
+        console.log(`Next: return to planning. A retry needs: uigates propose ... ${proposal.taskId ? `--task ${proposal.taskId} ` : ''}--replan-after ${receipt.id} --root-cause "<why>" --revision "<what changes>"`);
         process.exitCode = 1;
       } else {
-        console.log(`Next: uig synthesize ${receipt.intentId}`);
+        console.log(v.synthesize ? 'Done: recorded and synthesized.' : `Next: uigates synthesize ${receipt.intentId}`);
       }
       return;
     }
@@ -270,9 +512,10 @@ async function main(): Promise<void> {
     case 'synthesize': {
       const intentId = need(positionals[0], 'intentId (first argument)');
       if (!rt.state.getIntent(intentId)) return fail('Intent not found.');
-      const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger);
+      const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger, { requireLesson: true });
       await synth.synthesize(intentId);
       for (const r of synth.getRejections()) console.log(`Rejected receipt ${r.receiptId}: ${r.reason}`);
+      for (const u of synth.getUnpromoted()) console.log(`Not promoted: ${u.receiptId} (${u.action}) stated no lesson. Next time, record the receipt with --lesson "<what the next agent should know>".`);
       printKnowledge(root);
       for (const e of synth.getEscalations()) {
         console.log(`Needs the principal: ${e.kind} at ${e.level}: ${e.action}`);
@@ -292,7 +535,7 @@ async function main(): Promise<void> {
       const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger);
       if (level === 'knowledge') synth.approveKnowledge(action, principal);
       else if (level === 'canon') synth.approveCanon(action, principal);
-      else return fail('Usage: uig approve knowledge|canon "<action>" --principal <id>');
+      else return fail('Usage: uigates approve knowledge|canon "<action>" --principal <id>');
       console.log(`${principal} approved "${action}" as ${level}.`);
       return;
     }
@@ -322,8 +565,25 @@ async function main(): Promise<void> {
       return;
     }
 
+    case 'dashboard': {
+      const weights: Usage = { ...DEFAULT_WEIGHTS };
+      for (const part of (v.weights ?? '').split(',').filter(Boolean)) {
+        const [key, value] = part.split('=');
+        if (!(key in weights) || !Number.isFinite(Number(value))) fail(`--weights takes ${Object.keys(DEFAULT_WEIGHTS).join('=n,')}=n; got "${part}".`);
+        (weights as unknown as Record<string, number>)[key] = Number(value);
+      }
+      const report = buildDashboard(root, rt, { transcripts: v.transcripts, weights });
+      if (v.html) {
+        fs.writeFileSync(path.resolve(v.html), renderDashboardHtml(report));
+        console.log(`Wrote ${path.resolve(v.html)}. Re-run this command to refresh it; it is a static snapshot, not a live page.`);
+      }
+      if (v.json) console.log(JSON.stringify(report, null, 2));
+      else if (!v.html) console.log(formatDashboard(report));
+      return;
+    }
+
     default:
-      return fail(`Unknown command "${command}". Run: uig help`);
+      return fail(`Unknown command "${command}". Run: uigates help`);
   }
 }
 
@@ -334,12 +594,14 @@ function printKnowledge(root: string): void {
   for (const p of packs) {
     const flags = [p.candidate ? 'candidate for Knowledge' : '', p.needsPrincipal ? 'needs principal' : ''].filter(Boolean).join(', ');
     console.log(`  [${p.level}/${p.status}] ${p.action}  (${p.intents.length} intent${p.intents.length === 1 ? '' : 's'}${flags ? `; ${flags}` : ''})`);
+    if (p.paths.length) console.log(`    files: ${p.paths.join(', ')}`);
     if (p.failureModes.length) console.log(`    failures: ${p.failureModes.join(' | ')}`);
+    for (const l of p.lessons) console.log(`    lesson (the agent's claim, not verified): ${l}`);
   }
 }
 
 main().catch(error => {
-  if (error instanceof UsageError) console.error(`uig: ${error.message}`);
-  else console.error(error instanceof Error ? `uig: ${error.message}` : error);
+  if (error instanceof UsageError) console.error(`uigates: ${error.message}`);
+  else console.error(error instanceof Error ? `uigates: ${error.message}` : error);
   process.exitCode = 2;
 });

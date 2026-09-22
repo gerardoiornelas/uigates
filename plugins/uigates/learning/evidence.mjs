@@ -71,7 +71,7 @@ export function snapshot(root) {
   const result = {};
   function visit(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name))) {
-      if (['.git', 'node_modules', '.uig-learning'].includes(entry.name)) continue;
+      if (['.git', 'node_modules', '.uigates-learning', '.uig-learning'].includes(entry.name)) continue;
       const file = path.join(dir, entry.name);
       ensure(!entry.isSymbolicLink(), `Symlinks are not permitted in a frozen project: ${file}`);
       if (entry.isDirectory()) visit(file); else if (entry.isFile()) result[path.relative(root, file).split(path.sep).join('/')] = sha(fs.readFileSync(file));

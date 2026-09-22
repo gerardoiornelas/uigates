@@ -1,0 +1,12 @@
+{
+  "name": "uigates",
+  "displayName": "UI-GATES",
+  "description": "UI-GATES authority-aware learning workflow: explicit intent, bounded authority, verification evidence, and reusable learning.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Gerardo I. Ornelas",
+    "url": "https://gerardoiornelas.com"
+  },
+  "homepage": "https://github.com/gerardoiornelas/uigates",
+  "repository": "https://github.com/gerardoiornelas/uigates"
+}

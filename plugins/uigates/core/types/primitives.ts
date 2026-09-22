@@ -46,7 +46,7 @@ export interface Proposal {
   taskId?: string;
   /**
    * Required when the task's latest receipt ended in a delta: "do not retry on a delta without
-   * first returning to planning to address its root cause" (skills/uig). The engine checks that
+   * first returning to planning to address its root cause" (skills/uigates). The engine checks that
    * the replan exists and cites the failing receipt; it cannot judge whether the replan is sound.
    */
   replan?: { after: string; rootCause: string; revision: string };
@@ -81,6 +81,13 @@ export interface Receipt {
   evidence: string[]; // Links to logs, test results, commit hashes
   verifiedAt: Date;
   taskId?: string; // the Proposal.taskId this execution advanced
+  /**
+   * What the next agent should know, stated by the agent when it records the receipt. A receipt
+   * proves the action worked; it says nothing about what the action teaches. Without this the
+   * synthesizer can only restate the action, which is how a ledger fills with process.
+   * The claim is the agent's own and is not verified.
+   */
+  lesson?: string;
 }
 
 export interface Policy {

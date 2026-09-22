@@ -10,7 +10,7 @@ import {CESynthesizer,loadKnowledge} from '../intelligence/ce/synthesizer';
 import {UIGatesWrapper} from './UIGatesWrapper';
 let next=0;
 function fixture(t:any){
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'uig-fixed-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'uigates-fixed-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const store=new ReceiptStore(),gov=new GovernanceEngine([],undefined,store),synth=new CESynthesizer(store,root,gov.ledger);
  fs.writeFileSync(path.join(root,'checks.json'),JSON.stringify({passed:true,checks:['external verifier fixture']}));
  const ref='sha256:'+crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'checks.json'),'utf8')).digest('hex')+':checks.json';
@@ -26,7 +26,7 @@ test('delayed old success cannot clear newer failure',async t=>{const w=fixture(
 test('failure arriving before first success remains known',async t=>{const w=fixture(t),old=w.receipt(),bad=w.receipt({actualOutcome:'Failed',delta:'regression'}),at=Date.now();old.verifiedAt=new Date(at+1);bad.verifiedAt=new Date(at+2);await w.ingest(bad);assert.equal(w.packs().length,0);await w.ingest(old);assert.equal(w.packs()[0].status,'conflicted');});
 test('pending result does not invent a contradiction',async t=>{const w=fixture(t);await w.ingest(w.receipt());await w.ingest(w.receipt({actualOutcome:'Pending verification',evidence:[]}));assert.equal(w.packs()[0].status,'verified');});
 test('invalid receipt and intent times grant nothing',async t=>{const w=fixture(t);await w.ingest(w.receipt({verifiedAt:new Date('invalid')}));assert.equal(w.packs().length,0);const {p,intent}=w.proposed();intent.expiry=new Date('invalid');assert.equal(w.gov.evaluate(p,intent).denied,true);});
-test('Markdown edits cannot assert Canon',async t=>{const w=fixture(t);await w.ingest(w.receipt());const f=path.join(w.root,'.uig/knowledge/compound_packs',w.packs()[0].file);fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('canon_approved_by: ','canon_approved_by: mallory'));assert.equal(w.packs().length,0);});
+test('Markdown edits cannot assert Canon',async t=>{const w=fixture(t);await w.ingest(w.receipt());const f=path.join(w.root,'.uigates/knowledge/compound_packs',w.packs()[0].file);fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('canon_approved_by: ','canon_approved_by: mallory'));assert.equal(w.packs().length,0);});
 test('new supporting evidence remains visible',async t=>{const w=fixture(t);await w.ingest(w.receipt());fs.writeFileSync(path.join(w.root,'second.log'),'new proof');const hash=crypto.createHash('sha256').update('new proof').digest('hex');await w.ingest(w.receipt({evidence:[`sha256:${hash}:second.log`]}));assert(w.packs()[0].evidence.includes('second.log'));});
 test('scope checks path boundaries and rejects host paths',t=>{const w=fixture(t),{p,intent}=w.proposed();for(const resource of ['private/not-src/a.js','/src/a.js','../src/a.js','C:/src/a.js'])assert.equal(w.gov.evaluate({...p,resource},intent).denied,true);assert.equal(w.gov.evaluate({...p,resource:'src/nested/a.js'},intent).denied,false);});
 test('changing verification or risk after evaluation invalidates authority',t=>{const w=fixture(t);for(const key of ['verificationPlan','risk','rationale','authorityRequested']){const {p,intent}=w.proposed(),ev=w.gov.evaluate(p,intent);assert.throws(()=>w.gov.authorize({...p,[key]:'changed'},'principal',ev.suggestedState),/differs/);}});

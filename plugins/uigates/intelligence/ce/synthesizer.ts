@@ -4,6 +4,7 @@ import * as path from 'path';
 import { AuthorityLedger } from '../../core/AuthorityLedger';
 import { ReceiptStore } from '../../core/ReceiptStore';
 import { Receipt } from '../../core/types/primitives';
+import { stateDir } from '../../core/names';
 
 const MAX_FIELD = 500;
 const POSITIVE_OUTCOME = /\bsucc(?:ess(?:ful(?:ly)?)?|eed(?:s|ed)?)\b/i;
@@ -37,6 +38,8 @@ interface PackState {
   verified: string[]; // receipt ids that proved the action
   contradicted: string[]; // receipt ids where the action later failed
   failureModes: string[]; // what went wrong, most recent last
+  lessons: string[]; // what agents said the next agent should know, most recent last; the agent's claim, not verified
+  paths?: string[]; // where the verified work happened: the resources its authorizations covered, most recent last
   latest: 'verified' | 'contradicted'; // most recent evidence decides the status
   knowledgeApprovedBy: string;
   canonApprovedBy: string;
@@ -52,6 +55,10 @@ export interface KnowledgePack {
   evidence: string;
   intents: string[];
   failureModes: string[];
+  /** What the agents who did the work said the next agent should know. Their claim; the receipt does not verify it. */
+  lessons: string[];
+  /** Where the verified work happened. Project-relative, most recent last. What lets a later agent start in the right place. */
+  paths: string[];
   /** Verified across enough distinct intents to be proposed for Knowledge, but not yet approved. */
   candidate: boolean;
   /** Something is waiting on a principal: a candidate to approve, or a conflicted Knowledge/Canon. */
@@ -85,8 +92,8 @@ function statusOf(s: PackState): PackStatus {
 /** Markdown is a projection, not an approval record. A modified projection is withheld. */
 function trustedState(projectRoot: string, file: string): PackState | undefined {
   try {
-    const state = JSON.parse(fs.readFileSync(path.join(projectRoot, '.uig', 'knowledge', 'pack_state', file + '.json'), 'utf8'));
-    const markdown = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs', file);
+    const state = JSON.parse(fs.readFileSync(path.join(stateDir(projectRoot), 'knowledge', 'pack_state', file + '.json'), 'utf8'));
+    const markdown = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs', file);
     if (state.markdownSha256 && (!fs.existsSync(markdown) || crypto.createHash('sha256').update(Uint8Array.from(fs.readFileSync(markdown))).digest('hex') !== state.markdownSha256)) return undefined;
     return state.state;
   } catch { return undefined; }
@@ -95,6 +102,46 @@ function trustedState(projectRoot: string, file: string): PackState | undefined 
 export interface SynthesisOptions {
   /** An independently controlled verifier can supply evidence validation. Fixture tests must opt in explicitly. */
   evidenceVerifier?: (receipt: Receipt) => boolean;
+  /**
+   * Promote a verified receipt only if it carries a stated lesson. Off by default, so existing callers
+   * are unchanged; the `uigates` CLI turns it on. Without it every verified action becomes a lesson named
+   * after the action, and a ledger fills with "delete the temporary harness".
+   */
+  requireLesson?: boolean;
+}
+
+const MIN_LESSON = 20;
+const MAX_PATHS = 12;
+
+/**
+ * A resource as a location worth remembering: project-relative, normalized, and naming something
+ * specific. A project-wide resource ('.', '/'), a path outside the project, and UI-GATES' own state
+ * say nothing about where the work was, so they are not recorded.
+ */
+export function locationOf(resource: string): string | null {
+  const p = path.posix.normalize(resource.replace(/\\/g, '/')).replace(/^\.\//, '').replace(/\/$/, '');
+  if (!p || p === '.' || p === '/' || p === '..' || p.startsWith('../') || path.posix.isAbsolute(p) || /^[a-z]:/i.test(p)) return null;
+  if (/(^|\/)\.(uigates|uig)(\/|$)/.test(p)) return null;
+  return p;
+}
+
+const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Why a lesson would not teach anything, or null if it is acceptable. The check is deterministic and
+ * deliberately shallow: it catches the lessons that only restate the action or the verification plan,
+ * placeholders and text too short to carry advice. It cannot tell good advice from confident nonsense.
+ */
+export function lessonProblem(lesson: string, action: string, verificationPlan: string): string | null {
+  const text = normalize(lesson);
+  if (text.length < MIN_LESSON) return `a lesson needs at least ${MIN_LESSON} characters of advice for the next agent`;
+  if (/^(todo|tbd|none|n a|na|nothing|see above|as above)\b/.test(text)) return 'a placeholder is not a lesson';
+  if (lesson.replace(/\s+/g, ' ').trim().length > MAX_FIELD) return `a lesson is at most ${MAX_FIELD} characters; say the one thing that matters`;
+  for (const [what, source] of [['the action', action], ['the verification plan', verificationPlan]] as const) {
+    const s = normalize(source);
+    if (s && (text === s || s.includes(text))) return `that only restates ${what}; say what the next agent should know that the title does not`;
+  }
+  return null;
 }
 
 /** Default evidence references bind existing project-local bytes: sha256:<hex>:<relative path>. */
@@ -116,7 +163,7 @@ export function verifyEvidenceFiles(root: string, receipt: Receipt): boolean {
  * Only `status === 'verified'` packs are recommendations.
  */
 export function loadKnowledge(projectRoot: string): KnowledgePack[] {
-  const dir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
+  const dir = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs');
   if (!fs.existsSync(dir)) return [];
   const out: KnowledgePack[] = [];
   for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort()) {
@@ -125,7 +172,7 @@ export function loadKnowledge(projectRoot: string): KnowledgePack[] {
     const level = levelOf(s), status = statusOf(s), candidate = isCandidate(s);
     out.push({
       file, action: s.action, status, level, expected: s.expected, evidence: s.evidence,
-      intents: s.intents, failureModes: s.failureModes, candidate,
+      intents: s.intents, failureModes: s.failureModes, lessons: s.lessons ?? [], paths: s.paths ?? [], candidate,
       needsPrincipal: (status === 'verified' && candidate) || (status === 'conflicted' && level !== 'task'),
     });
   }
@@ -138,6 +185,8 @@ export class CESynthesizer {
   private projectRoot: string;
   private authority: AuthorityLedger | 'unverified';
   private rejected = new Map<string, string>();
+  private unpromoted = new Map<string, string>();
+  private requireLesson: boolean;
   private evidenceVerifier: (receipt: Receipt) => boolean;
 
   /**
@@ -153,7 +202,8 @@ export class CESynthesizer {
     this.authority = authority;
     this.projectRoot = projectRoot;
     this.evidenceVerifier = options.evidenceVerifier ?? (r => verifyEvidenceFiles(projectRoot, r));
-    this.knowledgeDir = path.join(projectRoot, '.uig', 'knowledge', 'compound_packs');
+    this.requireLesson = options.requireLesson ?? false;
+    this.knowledgeDir = path.join(stateDir(projectRoot), 'knowledge', 'compound_packs');
     this.ensureDir();
   }
 
@@ -161,6 +211,11 @@ export class CESynthesizer {
     if (!fs.existsSync(this.knowledgeDir)) {
       fs.mkdirSync(this.knowledgeDir, { recursive: true });
     }
+  }
+
+  /** Verified receipts that were not promoted because they stated no lesson. Only when `requireLesson` is on. */
+  getUnpromoted(): { receiptId: string; action: string }[] {
+    return [...this.unpromoted].map(([receiptId, action]) => ({ receiptId, action }));
   }
 
   /** Receipts that were refused, with the reason. */
@@ -191,7 +246,8 @@ export class CESynthesizer {
           continue;
         }
         if (this.isVerifiedSuccess(receipt)) {
-          this.recordSupport(receipt, 'verified');
+          if (this.requireLesson && !receipt.lesson?.trim()) this.unpromoted.set(receipt.id, receipt.actionPerformed);
+          else this.recordSupport(receipt, 'verified');
         } else if (this.isContradiction(receipt)) {
           this.recordSupport(receipt, 'contradicted');
         }
@@ -244,11 +300,11 @@ export class CESynthesizer {
 
   private write(filePath: string, state: PackState): void {
     const markdown = this.render(state);
-    const stateDir = path.join(this.projectRoot, '.uig', 'knowledge', 'pack_state');
-    fs.mkdirSync(stateDir, { recursive: true });
+    const packStateDir = path.join(stateDir(this.projectRoot), 'knowledge', 'pack_state');
+    fs.mkdirSync(packStateDir, { recursive: true });
     // Preserve failures before the first success without publishing a recommendation.
     if (state.verified.length) fs.writeFileSync(filePath, markdown);
-    fs.writeFileSync(path.join(stateDir, path.basename(filePath) + '.json'), JSON.stringify({
+    fs.writeFileSync(path.join(packStateDir, path.basename(filePath) + '.json'), JSON.stringify({
       state, markdownSha256: state.verified.length ? crypto.createHash('sha256').update(markdown).digest('hex') : null,
     }));
   }
@@ -264,10 +320,11 @@ export class CESynthesizer {
       evidence: flat(receipt.evidence.filter(e => e.trim()).join(', ')),
       intent: flat(receipt.intentId),
       actor: flat(receipt.actorId),
-      intents: [], principals: [], verified: [], contradicted: [], failureModes: [],
+      intents: [], principals: [], verified: [], contradicted: [], failureModes: [], lessons: [],
       latest: kind, knowledgeApprovedBy: '', canonApprovedBy: '', retiredBy: '',
     };
 
+    state.lessons ??= []; // a pack written before lessons existed
     // Replaying a receipt already counted must not change the pack (idempotence).
     const id = safeId(receipt.id);
     if (state.verified.includes(id) || state.contradicted.includes(id)) return;
@@ -278,6 +335,11 @@ export class CESynthesizer {
     if (kind === 'verified') {
       const evidence = flat(receipt.evidence.filter(e => e.trim()).join(', '));
       if (evidence && !state.evidence.includes(evidence)) state.evidence = `${state.evidence}; ${evidence}`.slice(-4000);
+      state.paths ??= [];
+      const where = this.authority === 'unverified' ? null : locationOf(this.authority.lookup(receipt.authorizationId)?.authorization.resource ?? '');
+      if (where && !state.paths.includes(where)) state.paths = [...state.paths, where].slice(-MAX_PATHS);
+      const lesson = receipt.lesson ? flat(receipt.lesson) : '';
+      if (lesson && !state.lessons.includes(lesson)) state.lessons = [...state.lessons, lesson].slice(-3);
       const intent = flat(receipt.intentId);
       if (!state.intents.includes(intent)) state.intents.push(intent);
       const principal = this.authority === 'unverified' ? undefined : this.authority.lookup(receipt.authorizationId)?.intent.principalId;
@@ -377,6 +439,14 @@ retired_by: ${s.retiredBy}
 ---
 # Knowledge Pack: ${s.action}
 **${this.headline(s)}**
+
+## Where
+${(s.paths ?? []).length ? (s.paths ?? []).map(p => `- ${p}`).join('\n') : '_Not recorded._'}
+
+## Lesson
+${(s.lessons ?? []).length
+  ? `${(s.lessons ?? []).map(l => `- ${l}`).join('\n')}\n\n_Stated by the agent that did the work. The receipt proves the action succeeded; it does not prove this advice is right._`
+  : '_None stated: this pack records that the action was verified, not what it teaches._'}
 
 ## Context
 - Intent: ${s.intent}

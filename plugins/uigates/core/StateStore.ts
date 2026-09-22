@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Intent, Proposal, Authorization, Receipt } from './types/primitives';
+import { stateDir } from './names';
 
 /** Authority and audit records are write-once: rewriting one would rewrite history. */
 function writeOnce(filePath: string, value: unknown): void {
@@ -22,7 +23,7 @@ export class StateStore {
   private baseDir: string;
 
   constructor(projectRoot: string = process.cwd()) {
-    this.baseDir = path.join(projectRoot, '.uig');
+    this.baseDir = stateDir(projectRoot);
     this.ensureDirectories();
   }
 

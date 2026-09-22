@@ -116,7 +116,7 @@ async function runGameTest() {
     await synthesizer.synthesize(intent.id);
 
     // Update agent's internal knowledge from the filesystem
-    const knowledgeDir = path.join(process.cwd(), '.uig', 'knowledge', 'compound_packs');
+    const knowledgeDir = path.join(process.cwd(), '.uigates', 'knowledge', 'compound_packs');
     if (fs.existsSync(knowledgeDir)) {
       agent.setKnowledge(fs.readdirSync(knowledgeDir));
     }

@@ -67,7 +67,7 @@ function stats(xs: number[]) {
 const ci = (xs: number[]) => { const s = stats(xs); return `${s.mean.toFixed(2)} ±${(1.96 * s.se).toFixed(2)}`; };
 
 function tmpRoot(): string {
-  return path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'uig-arcade-')), 'proj');
+  return path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'uigates-arcade-')), 'proj');
 }
 const cleanup = (root: string) => fs.rmSync(path.dirname(root), { recursive: true, force: true });
 
@@ -485,11 +485,11 @@ async function showcase() {
   fs.writeFileSync(path.join(root, 'index.html'), `<!doctype html><meta charset="utf-8"><title>UI-GATES arcade</title>
 <body style="font:16px system-ui;background:#070912;color:#e8ecff;display:grid;place-content:center;height:100vh;gap:12px;text-align:center">
 <h1>UI-GATES arcade</h1><a style="color:#5ec8ff" href="games/breakout/index.html">Breakout</a><a style="color:#5ec8ff" href="games/pong/index.html">Pong</a>
-<small style="color:#9aa3c7">Each game shipped through governance. Audit trail in .uig/</small></body>`);
+<small style="color:#9aa3c7">Each game shipped through governance. Audit trail in .uigates/</small></body>`);
   realLog(`\n=== SHOWCASE (seed 7) ===`);
   realLog(`  breakout: ${b.total} attempts (${JSON.stringify(b.attempts)}) shipped=${b.shipped}`);
   realLog(`  pong:     ${p.total} attempts (${JSON.stringify(p.attempts)}) shipped=${p.shipped}`);
-  realLog(`  wrote ${path.relative(process.cwd(), root)}/games/{breakout,pong}/ and .uig/ (${fs.readdirSync(path.join(root, '.uig/receipts')).length} receipts)`);
+  realLog(`  wrote ${path.relative(process.cwd(), root)}/games/{breakout,pong}/ and .uigates/ (${fs.readdirSync(path.join(root, '.uigates/receipts')).length} receipts)`);
 }
 
 async function main() {

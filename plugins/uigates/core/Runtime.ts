@@ -5,7 +5,7 @@ import { ReceiptStore } from './ReceiptStore';
 /**
  * The engine's authority ledger, receipt store and cumulative-risk counters live in memory,
  * but an agent reaches UI-GATES through a CLI that starts a fresh process per call. Runtime
- * rebuilds that state from the write-once records in `.uig/`, so a rule such as "an
+ * rebuilds that state from the write-once records in the state directory (`.uigates/`, or `.uig/` in an older project), so a rule such as "an
  * authorization is spent once" or "no retry on a delta without a replan" holds across calls.
  *
  * Integrity note: the records are plain files the agent's own process can also write. This makes

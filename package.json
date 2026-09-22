@@ -1,23 +1,26 @@
 {
   "name": "uigates",
-  "version": "0.1.0",
-  "description": "UI-GATES: authority-aware learning for AI coding agents. Reference engine, `uig` CLI and evidence-backed learning harness.",
+  "version": "0.2.0",
+  "description": "UI-GATES: authority-aware learning for AI coding agents. Reference engine, `uigates` CLI and evidence-backed learning harness.",
   "private": true,
+  "license": "MIT",
   "author": "Gerardo I. Ornelas",
   "repository": "github:gerardoiornelas/uigates",
   "engines": {
     "node": ">=22"
   },
   "bin": {
-    "uig": "bin/uig.mjs"
+    "uigates": "bin/uigates.mjs",
+    "uig": "bin/uigates.mjs"
   },
   "scripts": {
-    "uig": "node bin/uig.mjs",
+    "uigates": "node bin/uigates.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:learning && npm run test:core && npm run test:workboard",
+    "test": "npm run test:learning && npm run test:core && npm run test:workboard && npm run test:tokenab",
     "test:learning": "node --test plugins/uigates/learning/learning.test.mjs",
     "test:workboard": "node --test \"examples/workboard/test/*.test.mjs\"",
-    "test:core": "tsx --test plugins/uigates/core/promises_test.ts plugins/uigates/core/synthesis_pressure_test.ts plugins/uigates/core/arcade_pressure_test.ts plugins/uigates/core/compounding_test.ts plugins/uigates/core/game_dev_test.ts plugins/uigates/core/pressure_tests.ts plugins/uigates/core/test_protection.ts plugins/uigates/core/skills_sync_test.ts plugins/uigates/core/learning_regression_test.ts plugins/uigates/cli/cli_test.ts"
+    "test:core": "tsx --test plugins/uigates/core/promises_test.ts plugins/uigates/core/synthesis_pressure_test.ts plugins/uigates/core/arcade_pressure_test.ts plugins/uigates/core/compounding_test.ts plugins/uigates/core/game_dev_test.ts plugins/uigates/core/pressure_tests.ts plugins/uigates/core/test_protection.ts plugins/uigates/core/skills_sync_test.ts plugins/uigates/core/learning_regression_test.ts plugins/uigates/cli/cli_test.ts plugins/uigates/cli/audit_test.ts plugins/uigates/core/gate_class_test.ts plugins/uigates/core/DecisionBackend_test.ts plugins/uigates/core/denial_kinds_test.ts plugins/uigates/cli/hook_test.ts plugins/uigates/core/lesson_test.ts plugins/uigates/core/names_test.ts plugins/uigates/cli/names_cli_test.ts plugins/uigates/cli/cost_test.ts plugins/uigates/cli/brief_test.ts plugins/uigates/cli/ceremony_test.ts plugins/uigates/cli/dashboard_test.ts",
+    "test:tokenab": "node --test evaluations/token-ab/token-ab.test.mjs"
   },
   "dependencies": {
     "tsx": "4.23.13"

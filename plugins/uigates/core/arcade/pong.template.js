@@ -97,7 +97,7 @@ if (typeof document !== 'undefined') {
     draw();
     requestAnimationFrame(frame);
   }
-  window.__uig = { get state() { return state; }, step, createGame };
+  window.__uigates = { get state() { return state; }, step, createGame };
   requestAnimationFrame(frame);
 }
 
