@@ -95,6 +95,30 @@ UI-GATES overhead is 84.6% of control here, against 123.6% in pilot 1 — the re
 
 **Decision point.** The design is validated; a verdict needs 8+ pairs, which means the full 16-task suite (~50 runs, several hours sequential, roughly 4x this pilot's small cost). Given every measurement so far is consistent with "no saving on a project too small to search," and the suite cannot test search savings at all by its own stated limit, the full Workboard run is queued but not yet started; a search-heavy suite is likely the higher-priority next build.
 
+## Full Workboard run, 2026-09-22
+
+50 of 50 runs completed (2 learning, 48 evaluation), 0 voids, $12.71 total. `--out ~/uigates-ab/full --model claude-sonnet-5 --seed 20260921`; `analyze.mjs` on the raw output, intention-to-treat and per-protocol identical (every ceremony and learned run issued a `uigates` command).
+
+Accepted by the independent verifier: control 16/16, ceremony 15/16, learned 14/16.
+
+| | Control | Ceremony | Learned |
+| --- | --- | --- | --- |
+| Mean weighted tokens (14 complete triples) | 70,685 | 130,971 | 127,947 |
+| Mean model calls | 7.3 | 13.8 | 13.4 |
+
+1. **What UI-GATES costs:** +60,286 over control (+85.3%), interval [47,862, 72,897]. Clearly costly, as in both pilots.
+2. **What learning saves:** 3,025 (2.3% of ceremony), interval [−19,913, 25,951], learned cheaper in 64.3% of pairs. Not distinguishable from no effect.
+3. **Net for the user (control vs. learned):** −57,261 (learned costs 81.0% more than control), interval [−72,436, −42,894]; after paying for the 221,940-token learning phase, −1,023,599 over the 14 tasks.
+
+**No verdict on any of the three**, by the plan's own comparability rule: control and learned differ by 2 accepted tasks, above the "at most 1" bound, so their costs are not judged comparable. The direction is consistent with pilot 2 and the plan's stated limit (a ~2,000-token project gives almost nothing to save), but this run does not add a statistically supported verdict beyond that.
+
+What went wrong, from the records and transcripts, not summarized by an agent:
+
+- **`search` failed the verifier in both ceremony and learned** (`features/search.mjs` written, verifier exit 1; control passed). A genuine implementation miss shared by both UI-GATES arms, not a gating or harness artifact.
+- **`label` failed only in `learned`, and not from a bad implementation — the file was never written.** The `learned` run declared the same file-creation action `--impact medium` (gated) where the `ceremony` run of the identical task declared `--impact low` (delegated) and completed normally. `uigates begin` then printed the gated stop-and-ask; this harness runs headless with no principal to answer, so the run ended there. This is the model's own impact declaration varying between two runs of the same task, exposed by a harness limitation (no approval path for a gated action), not evidence that the learned ledger caused a worse outcome.
+
+Records: `~/uigates-ab/full/{results.jsonl,protocol.json,transcripts/}`. Not committed to this repo (outside it, like the pilots).
+
 ## Analysis
 
 `node analyze.mjs results.jsonl`. Two analyses are printed. **Intention-to-treat** (every accepted run as randomized, whether or not the agent used UI-GATES) decides the verdict. **Per-protocol** (only runs where it did) is shown beside it. The criteria:
