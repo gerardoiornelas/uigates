@@ -63,9 +63,13 @@ function uigatesArtifacts(work) {
   return ['.claude', '.uigates', '.uig', 'node_modules/.bin/uigates', 'node_modules/.bin/uig'].filter(p => fs.existsSync(path.join(work, p)));
 }
 
-function prepareWorkspace(suite, arm, ledger) {
+function prepareWorkspace(suite, arm, ledger, phase) {
   const work = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'token-ab-')));
   fs.cpSync(suite.source, work, { recursive: true, filter: f => !['.git', 'node_modules'].includes(path.basename(f)) });
+  // Discovery must be discovery. The frozen project already contains what the discovery tasks produce, so in pilot 1 the agent
+  // "verified existing add.mjs" and stated a lesson about that: noise, and misleading for a task that creates a new file.
+  // The holdout tasks keep those files, as the project they are given includes them as exemplars.
+  if (phase === 'learning') for (const f of suite.discoveryRemove ?? []) fs.rmSync(path.join(work, f), { force: true });
   spawnSync('git', ['init', '-q'], { cwd: work });
   let pluginDir = null;
   if (arm !== 'control') {
@@ -103,7 +107,7 @@ function cleanEnv(extra) {
 const encodeCwd = dir => fs.realpathSync(dir).replace(/[^a-zA-Z0-9]/g, '-');
 
 function runOne({ suite, task, arm, phase, out, options, ledger, order }) {
-  const { work, pluginDir } = prepareWorkspace(suite, arm, ledger);
+  const { work, pluginDir } = prepareWorkspace(suite, arm, ledger, phase);
   const before = snapshot(work);
   const artifacts = [...uigatesArtifacts(work), ...(pluginDir ? ['--plugin-dir'] : [])];
   const prompt = promptFor(task, arm);

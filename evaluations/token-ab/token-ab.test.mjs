@@ -113,6 +113,14 @@ test('only the learned arm sees the ledger, and it holds what the learning phase
   assert.deepEqual(learning.map(x => x.task), ['d1', 'd2']);
 });
 
+test('discovery starts without what it is meant to discover, and the holdout tasks keep it', t => {
+  const s = sandbox(t);
+  assert.equal(s.go(['--tasks', 't1']).status, 0);
+  const seen = s.seen();
+  for (const e of seen.filter(x => ['d1', 'd2'].includes(x.task))) assert.equal(e.seed, false, `${e.task}: the file the discovery task creates is not already there`);
+  for (const e of seen.filter(x => x.task === 't1')) assert.equal(e.seed, true, `${e.arm}: holdouts get the project with its exemplars`);
+});
+
 test('provider settings are removed from the agent\'s environment', t => {
   const s = sandbox(t);
   assert.equal(s.go(['--tasks', 't1'], { ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787', ANTHROPIC_API_KEY: 'not-real' }).status, 0);

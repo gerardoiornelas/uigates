@@ -11,6 +11,7 @@ export default {
   verifier,
   verifierSha256: process.env.MINI_PIN ?? crypto.createHash('sha256').update(fs.readFileSync(verifier)).digest('hex'),
   discovery: [shape('d1', 'a'), shape('d2', 'b')],
+  discoveryRemove: ['features/seed.mjs'],
   tasks: ['t1', 't2', 't3'].map(id => shape(id, 'a')),
   pilot: ['t1', 't2'],
 };

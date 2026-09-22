@@ -61,6 +61,16 @@ The pilot is four tasks, one per family, plus the two discovery tasks (14 runs).
 3. **The control accepts.** At least 75% of control runs pass the verifier, so cost is being compared on work that was done.
 4. **No infrastructure voids** (see below).
 
+## Pilot 1: a design run, not evidence
+
+Pilot 1 (14 real runs, four tasks) was run to test the design. Its numbers are **not** results and are not in any verdict; the treatment changed afterward, as described. What it showed:
+
+- Every gate held mechanically: all 10 ceremony and learned runs used UI-GATES, the control accepted 4 of 4, no run was void, and the brief reached every learned run (and "no lessons yet" every ceremony run).
+- UI-GATES cost about 2.2x the control in the lean environment: 78k against 35k weighted tokens per task, 10.0 against 4.3 model calls (interval on the difference 34k to 59k, n = 4). The five `uigates` calls per task (`help`, `start`, `propose`, `receipt`, `synthesize`), plus loading the skill, are where the extra turns came from.
+- The learning phase was not real: the frozen project already contains `add.mjs` and `complete.mjs`, so the discovery agents "verified existing" files and stated lessons about that. The ledger it produced ("features/add.mjs may already exist... verify before rewriting") would mislead a task that creates a new file.
+
+What changed as a result: `begin` (start and propose --authorize in one call) and `receipt --synthesize` (promote in the same call, printing only what changed, not the whole ledger) take the usual task from five `uigates` calls to two; the skill carries the exact command forms so no `help` call is needed; and the learning phase now removes the files discovery is meant to create. Pilot 2 repeats the same four tasks and the same seed against the changed treatment. Pilot 1's records are kept for the record and are not pooled with anything.
+
 ## Analysis
 
 `node analyze.mjs results.jsonl`. Two analyses are printed. **Intention-to-treat** (every accepted run as randomized, whether or not the agent used UI-GATES) decides the verdict. **Per-protocol** (only runs where it did) is shown beside it. The criteria:

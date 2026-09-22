@@ -16,7 +16,7 @@ const env = process.env;
 
 if (env.FAKE_LOG) {
   const ledger = has('.uigates/knowledge/compound_packs') ? fs.readdirSync(path.join(cwd, '.uigates/knowledge/compound_packs')).sort() : [];
-  fs.appendFileSync(env.FAKE_LOG, `${JSON.stringify({ arm, task: file, sawProviderEnv: !!(env.ANTHROPIC_BASE_URL || env.ANTHROPIC_API_KEY), ledger, asksForSkill: /Use the uigates skill/.test(prompt), literalSlash: prompt.startsWith('/'), args: args.filter(a => a.startsWith('--')) })}\n`);
+  fs.appendFileSync(env.FAKE_LOG, `${JSON.stringify({ arm, task: file, seed: has('features/seed.mjs'), sawProviderEnv: !!(env.ANTHROPIC_BASE_URL || env.ANTHROPIC_API_KEY), ledger, asksForSkill: /Use the uigates skill/.test(prompt), literalSlash: prompt.startsWith('/'), args: args.filter(a => a.startsWith('--')) })}\n`);
 }
 
 if (env.FAKE_NO_WRITE !== '1') {

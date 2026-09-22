@@ -23,6 +23,10 @@ class UsageError extends Error {}
 
 const HELP = `UI-GATES engine CLI
 
+  uigates begin "<goal>" --domain <path>... --success <evidence>... --action <text> --resource <path> --impact low|medium|high
+            --rationale <text> --risk <text> --verify <plan> [--no-brief]
+            start + propose --authorize in one call, for the usual one-action task. Every flag is checked first, so a missing one
+            creates nothing. A gated (medium or high impact) action still waits for the principal.
   uigates start "<goal>" --domain <path>... --success <evidence>... [--constraint <text>...] [--no-brief]
             [--principal <id>] [--expires-in-hours <n> | --expires <ISO date>] [--actor <id>...]
   uigates propose <intentId> --action <text> --resource <path> --impact low|medium|high
@@ -30,7 +34,8 @@ const HELP = `UI-GATES engine CLI
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
   uigates authorize <proposalId> [--approved-by <principal>]
             (propose --authorize does both in one call for a delegated action; a gated one still waits for the principal)
-  uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>]
+  uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>] [--synthesize]
+            --synthesize also promotes the lesson now and prints only what changed, so no separate synthesize call is needed [--lesson <text>]
   uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
             --lesson is what the next agent should know that the action's title does not say. Only a receipt
             that carries one is promoted to a lesson, and it can only be stated here: a receipt cannot be amended.
@@ -166,7 +171,7 @@ async function main(): Promise<void> {
       evidence: { type: 'string', multiple: true }, outcome: { type: 'string' }, delta: { type: 'string' },
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
       transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
-      paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' }, authorize: { type: 'boolean' },
+      paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' }, authorize: { type: 'boolean' }, synthesize: { type: 'boolean' },
     },
   });
   const root = path.resolve(v.root ?? envSetting('ROOT') ?? process.cwd());
@@ -244,69 +249,98 @@ async function main(): Promise<void> {
   if (hasBothStateDirs(root)) console.warn(`Warning: both .uigates/ and .uig/ exist. Records are read from ${stateDirName(root)}/ and the other directory is ignored.`);
   if (rt.orphans.length) console.warn(`Warning: ${rt.orphans.length} authorization(s) lack their proposal or intent and authorize nothing: ${rt.orphans.join(', ')}`);
 
+  const startIntent = (): Intent => {
+    const goal = need(positionals[0], 'goal (first argument)');
+    const authorityDomain = need(v.domain, 'domain');
+    const successEvidence = need(v.success, 'success');
+    const intent: Intent = {
+      id: newId('intent'),
+      principalId: principalFor(root, v.principal),
+      goal,
+      constraints: v.constraint ?? [],
+      successEvidence,
+      authorityDomain,
+      ...(v.actor ? { authorizedActors: v.actor } : {}),
+      expiry: expiryFrom(v['expires-in-hours'], v.expires),
+      createdAt: new Date(),
+    };
+    rt.state.saveIntent(intent);
+    console.log(`Intent: ${intent.id}`);
+    console.log(`Principal: ${intent.principalId}`);
+    console.log(`Delegated domain: ${intent.authorityDomain.join(', ')}`);
+    console.log(`Expires: ${new Date(intent.expiry).toISOString()}`);
+    if (!v['no-brief']) console.log(`\n${buildBrief(root, authorityDomain).text}`);
+    return intent;
+  };
+
+  const proposeAction = (intent: Intent, authorizeNow: boolean): void => {
+    const impact = need(v.impact, 'impact');
+    if (impact !== 'low' && impact !== 'medium' && impact !== 'high') fail('--impact must be low, medium or high.');
+    const replan = v['replan-after'] ? { after: v['replan-after'], rootCause: need(v['root-cause'], 'root-cause'), revision: need(v.revision, 'revision') } : undefined;
+    const proposal: Proposal = {
+      id: newId('prop'),
+      intentId: intent.id,
+      actorId: v.actor?.[0] ?? 'agent',
+      action: need(v.action, 'action'),
+      resource: need(v.resource, 'resource'),
+      rationale: need(v.rationale, 'rationale'),
+      impact,
+      risk: need(v.risk, 'risk'),
+      authorityRequested: impact === 'low' ? 'delegated' : 'gated',
+      verificationPlan: need(v.verify, 'verify'),
+      proposedAt: new Date(),
+      ...(v.task ? { taskId: v.task } : {}),
+      ...(replan ? { replan } : {}),
+    };
+    // Denied proposals are kept too: the audit trail should show what was attempted.
+    rt.state.saveProposal(proposal);
+    const evaluation = rt.gov.evaluate(proposal, intent);
+    console.log(`Proposal: ${proposal.id}`);
+    const help = evaluation.denied && evaluation.denial ? DENIAL_HELP[evaluation.denial] : undefined;
+    console.log(evaluation.denied ? `Authority: DENIED (${help?.label ?? 'not allowed'})` : `Authority: ${evaluation.suggestedState}`);
+    console.log(`Why: ${evaluation.rationale}`);
+    if (evaluation.denied) { if (help) console.log(`Next: ${help.next}`); process.exitCode = 1; return; }
+    if (evaluation.suggestedState === 'gated') {
+      // --authorize never speaks for the principal: a gated action always waits for their yes, then a separate authorize.
+      console.log('Next: ask the principal. Only after they approve, run: uigates authorize ' + proposal.id + ' --approved-by ' + intent.principalId);
+    } else if (authorizeNow) {
+      // The proposal is saved and evaluated before the authorization is written, so the order on record is unchanged.
+      issueAuthorization(rt, proposal, intent, evaluation.suggestedState);
+    } else {
+      console.log('Next: uigates authorize ' + proposal.id);
+    }
+  };
+
+  /** Promote what this intent's receipts earned and say only what changed. `synthesize` prints the whole ledger, which grows. */
+  const finishSynthesis = async (intentId: string): Promise<void> => {
+    const synth = new CESynthesizer(rt.receipts, root, rt.gov.ledger, { requireLesson: true });
+    await synth.synthesize(intentId);
+    for (const r of synth.getRejections()) console.log(`Rejected receipt ${r.receiptId}: ${r.reason}`);
+    for (const u of synth.getUnpromoted()) console.log(`Not promoted: ${u.receiptId} (${u.action}) stated no lesson. Next time, record the receipt with --lesson "<what the next agent should know>".`);
+    for (const e of synth.getEscalations()) console.log(`Needs the principal: ${e.kind} at ${e.level}: ${e.action}`);
+    console.log(`Knowledge: ${loadKnowledge(root).length} lesson(s) on record; uigates knowledge lists them.`);
+  };
+
   switch (command) {
     case 'start': {
-      const goal = need(positionals[0], 'goal (first argument)');
-      const authorityDomain = need(v.domain, 'domain');
-      const successEvidence = need(v.success, 'success');
-      const intent: Intent = {
-        id: newId('intent'),
-        principalId: principalFor(root, v.principal),
-        goal,
-        constraints: v.constraint ?? [],
-        successEvidence,
-        authorityDomain,
-        ...(v.actor ? { authorizedActors: v.actor } : {}),
-        expiry: expiryFrom(v['expires-in-hours'], v.expires),
-        createdAt: new Date(),
-      };
-      rt.state.saveIntent(intent);
-      console.log(`Intent: ${intent.id}`);
-      console.log(`Principal: ${intent.principalId}`);
-      console.log(`Delegated domain: ${intent.authorityDomain.join(', ')}`);
-      console.log(`Expires: ${new Date(intent.expiry).toISOString()}`);
-      if (!v['no-brief']) console.log(`\n${buildBrief(root, authorityDomain).text}`);
+      startIntent();
       return;
     }
 
     case 'propose': {
       const intent = rt.state.getIntent(need(positionals[0], 'intentId (first argument)'));
       if (!intent) return fail('Intent not found.');
-      const impact = need(v.impact, 'impact');
-      if (impact !== 'low' && impact !== 'medium' && impact !== 'high') fail('--impact must be low, medium or high.');
-      const replan = v['replan-after'] ? { after: v['replan-after'], rootCause: need(v['root-cause'], 'root-cause'), revision: need(v.revision, 'revision') } : undefined;
-      const proposal: Proposal = {
-        id: newId('prop'),
-        intentId: intent.id,
-        actorId: v.actor?.[0] ?? 'agent',
-        action: need(v.action, 'action'),
-        resource: need(v.resource, 'resource'),
-        rationale: need(v.rationale, 'rationale'),
-        impact,
-        risk: need(v.risk, 'risk'),
-        authorityRequested: impact === 'low' ? 'delegated' : 'gated',
-        verificationPlan: need(v.verify, 'verify'),
-        proposedAt: new Date(),
-        ...(v.task ? { taskId: v.task } : {}),
-        ...(replan ? { replan } : {}),
-      };
-      // Denied proposals are kept too: the audit trail should show what was attempted.
-      rt.state.saveProposal(proposal);
-      const evaluation = rt.gov.evaluate(proposal, intent);
-      console.log(`Proposal: ${proposal.id}`);
-      const help = evaluation.denied && evaluation.denial ? DENIAL_HELP[evaluation.denial] : undefined;
-      console.log(evaluation.denied ? `Authority: DENIED (${help?.label ?? 'not allowed'})` : `Authority: ${evaluation.suggestedState}`);
-      console.log(`Why: ${evaluation.rationale}`);
-      if (evaluation.denied) { if (help) console.log(`Next: ${help.next}`); process.exitCode = 1; return; }
-      if (evaluation.suggestedState === 'gated') {
-        // --authorize never speaks for the principal: a gated action always waits for their yes, then a separate authorize.
-        console.log('Next: ask the principal. Only after they approve, run: uigates authorize ' + proposal.id + ' --approved-by ' + intent.principalId);
-      } else if (v.authorize) {
-        // The proposal is saved and evaluated before the authorization is written, so the order on record is unchanged.
-        issueAuthorization(rt, proposal, intent, evaluation.suggestedState);
-      } else {
-        console.log('Next: uigates authorize ' + proposal.id);
-      }
+      proposeAction(intent, !!v.authorize);
+      return;
+    }
+
+    case 'begin': {
+      // Everything is checked before anything is written: a missing flag must not leave an intent behind.
+      need(positionals[0], 'goal (first argument)');
+      for (const [flag, value] of [['domain', v.domain], ['success', v.success], ['action', v.action], ['resource', v.resource], ['impact', v.impact], ['rationale', v.rationale], ['risk', v.risk], ['verify', v.verify]] as const) need(value, flag);
+      if (v.impact !== 'low' && v.impact !== 'medium' && v.impact !== 'high') fail('--impact must be low, medium or high.');
+      const intent = startIntent();
+      proposeAction(intent, true);
       return;
     }
 
@@ -382,6 +416,7 @@ async function main(): Promise<void> {
       const verdict = rt.gov.ledger.admitReceipt(receipt);
       if (!verdict.ok) return fail(`Receipt refused: ${verdict.reason}`);
       rt.state.saveReceipt(receipt);
+      rt.receipts.record(receipt); // so a synthesis in this same process (--synthesize) sees it; a later process reads it from disk
       console.log(`Receipt: ${receipt.id}`);
       console.log(`Outcome: ${receipt.actualOutcome}`);
       console.log(`Delta: ${receipt.delta}`);
@@ -389,11 +424,12 @@ async function main(): Promise<void> {
       console.log(lesson
         ? `Lesson: ${lesson}`
         : 'Lesson: none. This receipt will not be promoted to a lesson, and one can only be stated when the receipt is recorded (a receipt cannot be amended).');
+      if (v.synthesize) await finishSynthesis(receipt.intentId);
       if (delta.trim().toLowerCase() !== 'none') {
         console.log(`Next: return to planning. A retry needs: uigates propose ... ${proposal.taskId ? `--task ${proposal.taskId} ` : ''}--replan-after ${receipt.id} --root-cause "<why>" --revision "<what changes>"`);
         process.exitCode = 1;
       } else {
-        console.log(`Next: uigates synthesize ${receipt.intentId}`);
+        console.log(v.synthesize ? 'Done: recorded and synthesized.' : `Next: uigates synthesize ${receipt.intentId}`);
       }
       return;
     }

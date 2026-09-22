@@ -22,6 +22,8 @@ export default {
   verifier: path.join(real, 'verify.mjs'),
   verifierSha256: pinned,
   discovery: discovery.map(shape),
+  // What the discovery tasks create already exists in the frozen project; the learning phase must start without it.
+  discoveryRemove: discovery.map(t => `features/${t.id}.mjs`),
   tasks: tasks.map(shape),
   // Four tasks, one per family: enough to see whether the arms behave, before spending on all sixteen.
   pilot: ['list', 'summary', 'rename', 'reopen'],
