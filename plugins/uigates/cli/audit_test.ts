@@ -209,6 +209,26 @@ test('a gated CI edit passes the gate check but still cannot prove the principal
   assert.match(r.out, /WARN {2}\[gate\] .*too fast to be a human decision/, 'proposal and approval in the same second is not a person deciding');
 });
 
+test('a Jev-approved gate is flagged as a machine judgment, not an unprovable principal claim', t => {
+  const p = repo(t);
+  const intent = p.start('.gitlab-ci.yml');
+  const prop = p.id(p.propose(intent, '.gitlab-ci.yml', 'low'), 'Proposal');
+  const auth = p.id(p.uigates('authorize', prop, '--approved-by', 'gerardo'), 'Authorization');
+  // Simulate authorize --jev's own record shape (authorizedBy: "jev:<backend>") without needing a live
+  // backend call in this test — the CLI itself is covered by cli_test.ts's authorize --jev tests.
+  const authFile = path.join(p.root, '.uigates/authorizations', `${auth}.json`);
+  const record = JSON.parse(fs.readFileSync(authFile, 'utf8'));
+  record.authorizedBy = 'jev:typesafe-jev';
+  fs.writeFileSync(authFile, JSON.stringify(record));
+  p.write('.gitlab-ci.yml', 'stages: [test, lint]\n');
+  assert.equal(p.uigates('receipt', auth, '--run', verifier('.gitlab-ci.yml')).status, 0);
+  const r = p.audit();
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /approved by jev:typesafe-jev — a machine judgment, not the principal/);
+  assert.doesNotMatch(r.out, /principal consent cannot be proven from records/, 'a machine approval must not be reported as an unprovable human claim');
+  assert.doesNotMatch(r.out, /too fast to be a human decision/, 'timing-based human-approval heuristics do not apply to a machine approval');
+});
+
 test('a change edited after its last receipt is flagged as possibly stale', t => {
   const p = repo(t);
   const intent = p.start();

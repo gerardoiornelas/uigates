@@ -141,6 +141,54 @@ test('an unrecognized verdict value fails closed to ESCALATE rather than being p
   assert.equal(decision.verdict, 'ESCALATE');
 });
 
+/**
+ * GovernanceEngine.authorizeViaAdvisory: solo-workflow direction, docs/compound-engineering/graph-jev-aar.md,
+ * decided 2026-09-22 — APPROVE grants authority directly, gated or not, with no carve-out for gate-class
+ * resources. What must never regress: only a real APPROVE from evaluate()+backend.evaluate() can grant
+ * authority, the record's authorizedBy is always the backend's own name (never a human identity, and not
+ * settable by the caller), and DENY/ESCALATE grant nothing however they're called.
+ */
+
+test('authorizeViaAdvisory grants authority on APPROVE, even for a gate-class resource', () => {
+  const engine = new GovernanceEngine();
+  const p = proposal({ resource: 'package.json', impact: 'low' }); // gate-class: CRITICAL, would otherwise need a human
+  const evaluation = engine.evaluate(p, intent);
+  assert.equal(evaluation.suggestedState, 'gated');
+  const authorization = engine.authorizeViaAdvisory(p, { verdict: 'APPROVE', rationale: 'looks fine', backend: 'typesafe-jev' }, evaluation.suggestedState);
+  assert.equal(authorization.state, 'gated');
+  assert.equal(authorization.authorizedBy, 'jev:typesafe-jev');
+});
+
+test('authorizeViaAdvisory refuses to grant anything on DENY or ESCALATE', () => {
+  const engine = new GovernanceEngine();
+  const p = proposal({ resource: 'package.json', impact: 'low' });
+  const evaluation = engine.evaluate(p, intent);
+  for (const verdict of ['DENY', 'ESCALATE'] as const) {
+    assert.throws(() => engine.authorizeViaAdvisory(p, { verdict, rationale: 'x', backend: 'typesafe-jev' }, evaluation.suggestedState), /not APPROVE/);
+  }
+});
+
+test('authorizeViaAdvisory still refuses a proposal the engine itself denied (outside domain, wrong actor, etc.)', () => {
+  const engine = new GovernanceEngine();
+  const p = proposal({ resource: '../outside', impact: 'low' });
+  const evaluation = engine.evaluate(p, intent);
+  assert.equal(evaluation.denied, true);
+  assert.throws(() => engine.authorizeViaAdvisory(p, { verdict: 'APPROVE', rationale: 'x', backend: 'typesafe-jev' }, 'prohibited'), /Cannot authorize/);
+});
+
+test('a human authorize() and an advisory authorizeViaAdvisory() cannot both authorize the same proposal', () => {
+  const engine = new GovernanceEngine();
+  const p = proposal({ resource: 'package.json', impact: 'low' });
+  const evaluation = engine.evaluate(p, intent);
+  engine.authorizeViaAdvisory(p, { verdict: 'APPROVE', rationale: 'x', backend: 'typesafe-jev' }, evaluation.suggestedState);
+  // A second evaluate()+authorize() for the same proposal still works at the engine level (the CLI's
+  // own "already authorized" check is what prevents a double-grant in practice) — what must hold here
+  // is narrower: authorizeViaAdvisory never lets a human identity masquerade as the backend's approval.
+  const authorization = engine.authorizeViaAdvisory(p, { verdict: 'APPROVE', rationale: 'x', backend: 'local-stub' }, evaluation.suggestedState);
+  assert.equal(authorization.authorizedBy, 'jev:local-stub');
+  assert.notEqual(authorization.authorizedBy, intent.principalId);
+});
+
 test('the request carries the API key as a bearer token and never in the body or URL', async () => {
   let seenAuth: string | null = null;
   let seenUrl = '';

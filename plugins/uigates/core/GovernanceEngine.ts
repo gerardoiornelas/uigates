@@ -5,6 +5,7 @@ import { AuthorityLedger } from './AuthorityLedger';
 import { ReceiptStore } from './ReceiptStore';
 import { gateClassOf } from './GateClass';
 import { AUDIT_RECORD_PATH, STATE_PATH } from './names';
+import type { AdvisoryDecision } from './DecisionBackend';
 
 /**
  * Resource Protection Policy
@@ -203,14 +204,34 @@ export class GovernanceEngine {
   authorize(proposal: Proposal, principalId: string, state: AuthorityState): Authorization {
     const evaluated = this.evaluations.get(this.key(proposal));
     if (!evaluated) throw new Error(`Cannot authorize ${proposal.id}: it was never evaluated by this engine.`);
+    if (principalId !== evaluated.intent.principalId) {
+      throw new Error(`Cannot authorize ${proposal.id}: only the intent's principal (${evaluated.intent.principalId}) can grant authority, not ${principalId}.`);
+    }
+    return this.issueAuthorization(proposal, state, principalId);
+  }
+
+  /**
+   * Issue authority on an advisory backend's own APPROVE, per docs/compound-engineering/graph-jev-aar.md
+   * (solo-workflow direction, decided 2026-09-22). `authorizedBy` is derived only from the backend's own
+   * name on the decision it actually returned — never a caller-supplied string — so this path cannot be
+   * used to forge a human's approval, and the record never claims a person decided what a model did.
+   * DENY and ESCALATE grant nothing; ESCALATE still needs a human through `authorize(principalId, ...)`.
+   */
+  authorizeViaAdvisory(proposal: Proposal, decision: AdvisoryDecision, state: AuthorityState): Authorization {
+    if (decision.verdict !== 'APPROVE') {
+      throw new Error(`Cannot authorize ${proposal.id} via advisory: verdict was ${decision.verdict}, not APPROVE.`);
+    }
+    return this.issueAuthorization(proposal, state, `jev:${decision.backend}`);
+  }
+
+  private issueAuthorization(proposal: Proposal, state: AuthorityState, authorizedBy: string): Authorization {
+    const evaluated = this.evaluations.get(this.key(proposal));
+    if (!evaluated) throw new Error(`Cannot authorize ${proposal.id}: it was never evaluated by this engine.`);
     if (evaluated.fingerprint !== fingerprint(proposal)) {
       throw new Error(`Cannot authorize ${proposal.id}: it differs from the proposal that was evaluated.`);
     }
     const { intent, result } = evaluated;
     if (result.denied) throw new Error(`Cannot authorize ${proposal.id}: denied (${result.rationale})`);
-    if (principalId !== intent.principalId) {
-      throw new Error(`Cannot authorize ${proposal.id}: only the intent's principal (${intent.principalId}) can grant authority, not ${principalId}.`);
-    }
     if (state !== result.suggestedState) {
       throw new Error(`Cannot authorize ${proposal.id} as ${state}: evaluation resolved to ${result.suggestedState}.`);
     }
@@ -220,7 +241,7 @@ export class GovernanceEngine {
     const authorization: Authorization = {
       id: `auth_${crypto.randomUUID()}`,
       proposalId: proposal.id,
-      authorizedBy: principalId,
+      authorizedBy,
       state: state,
       authorizedAt: new Date(),
       expiry: new Date(intent.expiry),

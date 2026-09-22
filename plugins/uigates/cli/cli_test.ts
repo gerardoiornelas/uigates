@@ -153,6 +153,27 @@ test('gated actions cannot be self-approved', t => {
   assert.match(p.uigates('authorize', prop).out, /Already authorized/, 'authorizing twice does not issue a second authority');
 });
 
+test('authorize --jev grants authority on the configured backend\'s own APPROVE, with honest provenance', t => {
+  const p = project(t);
+  const intent = startIntent(p);
+  const prop = p.id(propose(p, intent, { impact: 'low' }), 'Proposal'); // delegated: the default local-stub backend advises APPROVE
+  const authorized = p.uigates('authorize', prop, '--jev');
+  assert.equal(authorized.status, 0, authorized.err);
+  assert.match(authorized.out, /State: delegated \(approved by jev:local-stub:/);
+  assert.doesNotMatch(authorized.out, /approved by gerardo/, 'a machine approval must never be printed as if a human approved it');
+});
+
+test('authorize --jev grants nothing on ESCALATE, and still points at the human fallback', t => {
+  const p = project(t);
+  const intent = startIntent(p);
+  const prop = p.id(propose(p, intent, { impact: 'medium' }), 'Proposal'); // gated: the local-stub backend has no real judgment and always escalates a gate
+  const result = p.uigates('authorize', prop, '--jev');
+  assert.equal(result.status, 1);
+  assert.match(result.err, /ESCALATE/);
+  assert.match(result.err, /--approved-by gerardo/);
+  assert.equal(fs.readdirSync(path.join(p.root, '.uigates/authorizations')).length, 0, 'an ESCALATE must not leave an authorization behind');
+});
+
 test('scope, audit records and traversal are refused', t => {
   const p = project(t);
   const intent = startIntent(p);

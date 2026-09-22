@@ -34,15 +34,19 @@ const HELP = `UI-GATES engine CLI
   uigates propose <intentId> --action <text> --resource <path> --impact low|medium|high
             --rationale <text> --risk <text> --verify <plan> [--actor <id>] [--task <id>] [--authorize]
             [--replan-after <receiptId> --root-cause <text> --revision <text>]
-  uigates authorize <proposalId> [--approved-by <principal>]
-            (propose --authorize does both in one call for a delegated action; a gated one still waits for the principal)
+  uigates authorize <proposalId> [--approved-by <principal> | --jev]
+            (propose --authorize does both in one call for a delegated action; a gated one still waits for the principal
+            unless --jev is given). --jev (docs/compound-engineering/graph-jev-aar.md, solo-workflow direction) asks the
+            configured DecisionBackend (UIGATES_JEV_BACKEND, default a local stub that always defers to ESCALATE) and
+            grants authority directly on APPROVE, gated or not — no carve-out for gate-class resources. DENY and
+            ESCALATE grant nothing; ESCALATE still needs --approved-by from the principal. authorizedBy records the
+            backend's own name (e.g. "jev:typesafe-jev"), never a human's identity, for an honest audit trail.
   uigates advise <proposalId>
-            spike (docs/compound-engineering/graph-jev-aar.md): an advisory-only judgment (APPROVE/DENY/ESCALATE) from a
-            pluggable DecisionBackend, printed alongside what \`authorize\` would decide. Read-only; grants nothing.
-            Default backend is a local stub with no real judgment (defers every gate to ESCALATE). Set
-            UIGATES_JEV_BACKEND=typesafe with TYPESAFE_API_KEY in the environment (or a gitignored .env in the
-            cwd — see .env.example) to call TypeSafe's Jev model instead — opt-in per invocation; this sends
-            the action, resource and rationale to api.typesafe.ai.
+            an advisory-only judgment (APPROVE/DENY/ESCALATE) from the configured DecisionBackend, printed alongside
+            what \`authorize\` would decide. Read-only; grants nothing, unlike \`authorize --jev\`. Useful as a dry run.
+            Set UIGATES_JEV_BACKEND=typesafe with TYPESAFE_API_KEY in the environment (or a gitignored .env in the
+            cwd — see .env.example) to call TypeSafe's Jev model instead of the local stub — this sends the action,
+            resource and rationale to api.typesafe.ai.
   uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>] [--synthesize]
             --synthesize also promotes the lesson now and prints only what changed, so no separate synthesize call is needed [--lesson <text>]
   uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
@@ -74,8 +78,9 @@ const HELP = `UI-GATES engine CLI
   --root <dir>    project root (default: UIGATES_ROOT or the current directory)
 
 Records live in <root>/.uigates/ (or <root>/.uig/ in a project that already has it). Delegated actions inside the intent's scope are authorized by the
-intent itself. A gated action needs the principal's approval in conversation first; only then pass
---approved-by. Principal decisions (approve, retire, --approved-by) must come from the user, never
+intent itself. A gated action needs either the principal's approval in conversation first (then pass
+--approved-by) or authorize --jev to grant it on a DecisionBackend's own APPROVE (see authorize's own help above).
+Principal decisions (approve, retire, --approved-by) must come from the user, never
 from the agent. For the learning/evaluation harness: node plugins/uigates/learning/cli.mjs help`;
 
 const MAX_LOG = 1_000_000;
@@ -202,6 +207,7 @@ async function main(): Promise<void> {
       base: { type: 'string' }, intent: { type: 'string' }, json: { type: 'boolean' },
       transcripts: { type: 'string', multiple: true }, weights: { type: 'string' },
       paths: { type: 'string' }, budget: { type: 'string' }, 'no-brief': { type: 'boolean' }, authorize: { type: 'boolean' }, synthesize: { type: 'boolean' },
+      jev: { type: 'boolean' },
       html: { type: 'string' },
     },
   });
@@ -384,6 +390,30 @@ async function main(): Promise<void> {
       if (existing) { console.log(`Already authorized: ${describeAuthorization(existing)}`); return; }
       const evaluation = rt.gov.evaluate(proposal, intent);
       if (evaluation.denied) { console.error(`Denied (${(evaluation.denial && DENIAL_HELP[evaluation.denial].label) ?? 'not allowed'}): ${evaluation.rationale}`); process.exitCode = 1; return; }
+
+      if (v.jev) {
+        // docs/compound-engineering/graph-jev-aar.md, solo-workflow direction: APPROVE grants authority
+        // directly, gated or not (decided 2026-09-22 — no carve-out for gate-class resources). DENY and
+        // ESCALATE grant nothing; authorizedBy records the backend's own name, never a human's identity.
+        const backend = resolveDecisionBackend();
+        const decision = await backend.evaluate(proposal, intent, evaluation);
+        if (decision.verdict !== 'APPROVE') {
+          console.error(`Jev (${decision.backend}): ${decision.verdict} — ${decision.rationale}`);
+          if (decision.verdict === 'ESCALATE') {
+            console.error(`Ask ${intent.principalId} and wait for a clear yes in this conversation. Then re-run with --approved-by ${intent.principalId}.`);
+          }
+          process.exitCode = 1;
+          return;
+        }
+        const authorization = rt.gov.authorizeViaAdvisory(proposal, decision, evaluation.suggestedState);
+        rt.state.saveAuthorization(authorization);
+        console.log(`Authorization: ${authorization.id}`);
+        console.log(`State: ${authorization.state} (approved by ${authorization.authorizedBy}: ${decision.rationale})`);
+        console.log(`Scope: ${authorization.action} -> ${authorization.resource}, until ${new Date(authorization.expiry ?? intent.expiry).toISOString()}`);
+        console.log(`Next: do the work, then: uigates receipt ${authorization.id} --run "<verification command>"`);
+        return;
+      }
+
       if (evaluation.suggestedState === 'gated' && v['approved-by'] !== intent.principalId) {
         console.error(`Gated: ${evaluation.rationale}`);
         console.error(`Ask ${intent.principalId} and wait for a clear yes in this conversation. Then re-run with --approved-by ${intent.principalId}. The agent may not approve its own gated action.`);

@@ -299,12 +299,23 @@ export function audit(root: string, base: string, intentFilter?: string): AuditR
 
   // Gated authorizations. The records cannot prove the principal said yes: the CLI signs a gated
   // authorization the same way whether the user or the agent passed --approved-by.
+  //
+  // authorize --jev (docs/compound-engineering/graph-jev-aar.md) is a different case: `authorizedBy`
+  // is "jev:<backend>", a machine identity, not a claimed human one — asking "did a person consent?"
+  // is the wrong question for it. What's still a real gap: the decision itself (verdict, confidence,
+  // the six signals) is only ever printed to stdout, never persisted as hashed evidence the way a
+  // receipt's evidence is, so this finding cannot yet verify the recorded judgment was real. That's
+  // open question 4 in the doc, not solved here — the audit says so honestly instead of pretending.
   const gated = authorizations.filter(a => a.state === 'gated').map(a => {
     const proposal = proposalById.get(a.proposalId);
     const approvedAfterSec = proposal ? Math.round((ms(a.authorizedAt) - ms(proposal.proposedAt)) / 1000) : NaN;
-    findings.push({ severity: 'INFO', check: 'gate', message: `Gated authorization ${a.id} for ${a.resource}: principal consent cannot be proven from records. Confirm a user message approved it before it was issued.` });
-    if (Number.isFinite(approvedAfterSec) && approvedAfterSec < HUMAN_APPROVAL_MIN_SEC) {
-      findings.push({ severity: 'WARN', check: 'gate', message: `Gated authorization ${a.id} was issued ${approvedAfterSec}s after its proposal: too fast to be a human decision unless approval was given in advance.` });
+    if (a.authorizedBy.startsWith('jev:')) {
+      findings.push({ severity: 'INFO', check: 'gate', message: `Gated authorization ${a.id} for ${a.resource} was approved by ${a.authorizedBy} — a machine judgment, not the principal. Its decision (verdict, confidence, signals) is not yet persisted as hashed evidence, so this cannot verify the judgment was real, only that this is the path it claims to have taken.` });
+    } else {
+      findings.push({ severity: 'INFO', check: 'gate', message: `Gated authorization ${a.id} for ${a.resource}: principal consent cannot be proven from records. Confirm a user message approved it before it was issued.` });
+      if (Number.isFinite(approvedAfterSec) && approvedAfterSec < HUMAN_APPROVAL_MIN_SEC) {
+        findings.push({ severity: 'WARN', check: 'gate', message: `Gated authorization ${a.id} was issued ${approvedAfterSec}s after its proposal: too fast to be a human decision unless approval was given in advance.` });
+      }
     }
     return { authorizationId: a.id, resource: a.resource, approvedAfterSec };
   });

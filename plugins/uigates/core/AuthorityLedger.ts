@@ -49,7 +49,13 @@ export class AuthorityLedger {
     const { authorization: a, intent } = held;
 
     if (a.state !== 'delegated' && a.state !== 'gated') return no(`authorization state "${a.state}" permits no execution`);
-    if (a.authorizedBy !== intent.principalId) return no(`authorization was not signed by the intent's principal`);
+    // Signed by the intent's principal, or by the docs/compound-engineering/graph-jev-aar.md advisory
+    // path ("jev:<backend>", never a caller-supplied string — see GovernanceEngine.authorizeViaAdvisory).
+    // Neither is cryptographically provable from a plain file; both are exactly the trust level mvp.md
+    // already documents ("tamper-evident to the engine's checks, not tamper-proof against a hostile agent").
+    if (a.authorizedBy !== intent.principalId && !a.authorizedBy.startsWith('jev:')) {
+      return no(`authorization was not signed by the intent's principal`);
+    }
     if (a.actorId !== r.actorId) return no(`authorization was issued to "${a.actorId}", not "${r.actorId}"`);
     if (a.intentId !== r.intentId) return no(`authorization belongs to intent "${a.intentId}", not "${r.intentId}"`);
     if (a.action !== r.actionPerformed) return no(`authorization covers "${a.action}", not "${r.actionPerformed}"`);
