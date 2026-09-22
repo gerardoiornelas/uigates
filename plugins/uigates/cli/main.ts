@@ -40,8 +40,9 @@ const HELP = `UI-GATES engine CLI
             spike (docs/compound-engineering/graph-jev-aar.md): an advisory-only judgment (APPROVE/DENY/ESCALATE) from a
             pluggable DecisionBackend, printed alongside what \`authorize\` would decide. Read-only; grants nothing.
             Default backend is a local stub with no real judgment (defers every gate to ESCALATE). Set
-            UIGATES_JEV_BACKEND=typesafe with TYPESAFE_API_KEY in the environment to call TypeSafe's Jev model instead —
-            opt-in per invocation; this sends the action, resource and rationale to api.typesafe.ai.
+            UIGATES_JEV_BACKEND=typesafe with TYPESAFE_API_KEY in the environment (or a gitignored .env in the
+            cwd — see .env.example) to call TypeSafe's Jev model instead — opt-in per invocation; this sends
+            the action, resource and rationale to api.typesafe.ai.
   uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>] [--synthesize]
             --synthesize also promotes the lesson now and prints only what changed, so no separate synthesize call is needed [--lesson <text>]
   uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]

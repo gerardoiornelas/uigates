@@ -3,6 +3,10 @@ graphify-out/
 .graphify_analysis.json
 .graphify_labels.json
 
+# Local secrets (TYPESAFE_API_KEY, etc.) — see .env.example. Never commit the real file.
+.env
+.env.local
+
 # UI-GATES local runtime evidence (.uig/ is the earlier name)
 .uigates/
 .uig/
