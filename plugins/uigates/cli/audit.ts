@@ -63,7 +63,13 @@ const HUMAN_APPROVAL_MIN_SEC = 5;
 const RANK: Record<Impact | 'none', number> = { none: -1, low: 0, medium: 1, high: 2 };
 
 /** A verifier that cannot fail verifies nothing. */
-const VACUOUS = [/^(true|:|exit 0)$/, /^echo\b/, /^sleep\b/, /process\.exit\(0\)/, /^python3? -c ['"]pass['"]$/];
+// `git diff`/`git diff --stat`/`git show` without `--exit-code` always exits 0, whether or not there are
+// changes: it proves a diff exists, never that the change is correct. Seen in real use: a receipt
+// citing it as evidence is functionally the same as `echo` (WUN pressure test, 2026-09-22).
+const VACUOUS = [
+  /^(true|:|exit 0)$/, /^echo\b/, /^sleep\b/, /process\.exit\(0\)/, /^python3? -c ['"]pass['"]$/,
+  /^git\s+(diff|show|log)\b(?!.*--exit-code)/,
+];
 
 class AuditError extends Error {}
 

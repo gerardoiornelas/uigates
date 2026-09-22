@@ -76,7 +76,7 @@ It compares every file that differs from `<commit>` (staged, unstaged, committed
 | --- | --- |
 | FAIL | A changed file has no authorization covering it, or no receipt, or only receipts that ended in a delta |
 | FAIL | A gate-class file (CI, dependencies, deployment or infrastructure config, `.env`, settings) changed under delegated authority only |
-| FAIL | Evidence is missing or no longer matches its recorded hash; a receipt contradicts its own log; the verification command cannot fail (`true`, `echo`, `process.exit(0)`) |
+| FAIL | Evidence is missing or no longer matches its recorded hash; a receipt contradicts its own log; the verification command cannot fail (`true`, `echo`, `process.exit(0)`, or `git diff`/`show`/`log` without `--exit-code`, which exits 0 whether or not there is a difference) |
 | WARN | The outcome was asserted by the agent, not produced by the CLI |
 | WARN | A receipt's verification runs a script outside the project, or one that no longer exists in the working tree or the base commit. `receipt --run` hashes the command's output, never the script, so the logic behind that evidence is not in the record (trial findings 4 and 10) |
 | WARN | A file was last written before it was authorized, or modified after its last receipt (file times; heuristic) |

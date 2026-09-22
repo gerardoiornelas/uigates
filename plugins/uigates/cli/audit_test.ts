@@ -121,6 +121,31 @@ test('a verification command that cannot fail is rejected', t => {
   assert.match(r.out, /the verification command "true" cannot fail/);
 });
 
+test('git diff, show and log without --exit-code always exit 0, so citing one as evidence is rejected', t => {
+  // Real case, found running a live session against a large repo: an agent verified a UI change
+  // with `git diff -- <file>`, which proves the file differs from HEAD, not that the change works.
+  const commands = ['git diff -- src/a.js', 'git diff --stat -- src/a.js', 'git show -- src/a.js', 'git log -1 -- src/a.js'];
+  const p = repo(t);
+  for (const command of commands) {
+    const intent = p.start();
+    const c = p.cycle(intent, 'src/a.js', command);
+    assert.equal(c.receipt.status, 0, `the CLI accepts it; only the audit can tell it is empty: ${command}`);
+  }
+  const r = p.audit();
+  assert.equal(r.status, 1);
+  for (const command of commands) {
+    assert.match(r.out, new RegExp(`the verification command "${command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" cannot fail`), command);
+  }
+});
+
+test('git diff --exit-code can fail, so it is accepted as real verification', t => {
+  const p = repo(t);
+  const intent = p.start();
+  assert.equal(p.cycle(intent, 'src/a.js', 'git diff --exit-code --quiet -- src/a.js; test $? -ne 0').receipt.status, 0);
+  const r = p.audit();
+  assert.doesNotMatch(r.out, /cannot fail/);
+});
+
 test('evidence altered after the receipt fails its hash', t => {
   const p = repo(t);
   const intent = p.start();
