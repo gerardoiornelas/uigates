@@ -7,7 +7,7 @@ import { Runtime } from '../core/Runtime';
 import { CESynthesizer, lessonProblem, loadKnowledge } from '../intelligence/ce/synthesizer';
 import { Authorization, Intent, Proposal, Receipt } from '../core/types/primitives';
 import type { DenialKind } from '../core/GovernanceEngine';
-import { LocalStubBackend, type DecisionBackend } from '../core/DecisionBackend';
+import { LocalStubBackend, TypeSafeJevBackend, type DecisionBackend } from '../core/DecisionBackend';
 import { audit, AuditError, failed, formatReport } from './audit';
 import { enforcementOn, runHook } from './hook';
 import { buildBrief, DEFAULT_BRIEF_BUDGET } from '../intelligence/ce/brief';
@@ -39,7 +39,9 @@ const HELP = `UI-GATES engine CLI
   uigates advise <proposalId>
             spike (docs/compound-engineering/graph-jev-aar.md): an advisory-only judgment (APPROVE/DENY/ESCALATE) from a
             pluggable DecisionBackend, printed alongside what \`authorize\` would decide. Read-only; grants nothing.
-            The only backend today is a local stub with no real judgment — it defers every gated proposal to ESCALATE.
+            Default backend is a local stub with no real judgment (defers every gate to ESCALATE). Set
+            UIGATES_JEV_BACKEND=typesafe with TYPESAFE_API_KEY in the environment to call TypeSafe's Jev model instead —
+            opt-in per invocation; this sends the action, resource and rationale to api.typesafe.ai.
   uigates receipt <authorizationId> --run "<verification command>" [--timeout-sec <n>] [--lesson <text>] [--synthesize]
             --synthesize also promotes the lesson now and prints only what changed, so no separate synthesize call is needed [--lesson <text>]
   uigates receipt <authorizationId> --evidence <file>... --outcome <text> --delta <text|None> [--lesson <text>]
@@ -78,6 +80,23 @@ from the agent. For the learning/evaluation harness: node plugins/uigates/learni
 const MAX_LOG = 1_000_000;
 
 function fail(message: string): never { throw new UsageError(message); }
+
+/**
+ * Opt-in only, per docs/compound-engineering/graph-jev-aar.md: the default is the local stub
+ * (no external call). UIGATES_JEV_BACKEND=typesafe (or UIG_JEV_BACKEND=typesafe) switches to a live
+ * TypeSafe Jev call and requires TYPESAFE_API_KEY in the environment — never pass a key on the
+ * command line or hardcode one, and never as a project default: it's a per-invocation choice.
+ */
+function resolveDecisionBackend(): DecisionBackend {
+  const choice = envSetting('JEV_BACKEND');
+  if (!choice || choice === 'local') return new LocalStubBackend();
+  if (choice === 'typesafe') {
+    const apiKey = process.env.TYPESAFE_API_KEY;
+    if (!apiKey) fail('UIGATES_JEV_BACKEND=typesafe requires TYPESAFE_API_KEY in the environment.');
+    return new TypeSafeJevBackend({ apiKey });
+  }
+  return fail(`Unknown UIGATES_JEV_BACKEND "${choice}". Use "local" (default) or "typesafe".`);
+}
 
 function principalFor(root: string, given?: string): string {
   if (given) return given;
@@ -380,8 +399,8 @@ async function main(): Promise<void> {
       const intent = rt.state.getIntent(proposal.intentId);
       if (!intent) return fail('Intent not found.');
       const evaluation = rt.gov.evaluate(proposal, intent);
-      const backend: DecisionBackend = new LocalStubBackend();
-      const decision = backend.evaluate(proposal, intent, evaluation);
+      const backend: DecisionBackend = resolveDecisionBackend();
+      const decision = await backend.evaluate(proposal, intent, evaluation);
       console.log(`Engine: ${evaluation.denied ? 'denied' : evaluation.suggestedState} — ${evaluation.rationale}`);
       console.log(`Advisory (${decision.backend}): ${decision.verdict} — ${decision.rationale}`);
       console.log('This is advisory only. It grants no authority: gated work still needs uigates authorize --approved-by <principal>.');
