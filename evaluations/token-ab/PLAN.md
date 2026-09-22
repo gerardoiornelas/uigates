@@ -61,6 +61,10 @@ The pilot is four tasks, one per family, plus the two discovery tasks (14 runs).
 3. **The control accepts.** At least 75% of control runs pass the verifier, so cost is being compared on work that was done.
 4. **No infrastructure voids** (see below).
 
+## Void run log
+
+- **Pilot 2, evaluation phase, 2026-09-22.** Right after the learning phase finished, Anthropic's API began returning `529 Overloaded`. The `list` task's three runs retried through it to an empty synthetic response; the remaining nine failed instantly at zero tokens. Every arm failed identically, including control, confirming it was infrastructure. Retried once, in a fresh output directory, reusing the same (unaffected) learning-phase ledger and skipping the learning phase: 12 of 12 accepted, no voids. Per the rule above, pilot 2's original evaluation records are kept but excluded from analysis; the retry is the design-validation run.
+
 ## Pilot 1: a design run, not evidence
 
 Pilot 1 (14 real runs, four tasks) was run to test the design. Its numbers are **not** results and are not in any verdict; the treatment changed afterward, as described. What it showed:
@@ -70,6 +74,26 @@ Pilot 1 (14 real runs, four tasks) was run to test the design. Its numbers are *
 - The learning phase was not real: the frozen project already contains `add.mjs` and `complete.mjs`, so the discovery agents "verified existing" files and stated lessons about that. The ledger it produced ("features/add.mjs may already exist... verify before rewriting") would mislead a task that creates a new file.
 
 What changed as a result: `begin` (start and propose --authorize in one call) and `receipt --synthesize` (promote in the same call, printing only what changed, not the whole ledger) take the usual task from five `uigates` calls to two; the skill carries the exact command forms so no `help` call is needed; and the learning phase now removes the files discovery is meant to create. Pilot 2 repeats the same four tasks and the same seed against the changed treatment. Pilot 1's records are kept for the record and are not pooled with anything.
+
+## Pilot 2 (retry): design validated, still not evidence
+
+12 of 12 accepted, 0 voids. All four pre-registered gates passed:
+
+1. **Skill loads and is used.** 8 of 8 ceremony/learned runs issued a uigates command (100%, gate is 90%). The reduced ceremony worked: most runs are `begin > receipt`, two calls, against pilot 1's five (`help > start > propose > receipt > synthesize`).
+2. **The brief reaches the learned arm.** All 4 learned runs printed "Earlier verified work near ..." naming the real lesson from the (now-real) learning phase ("Create features/add.mjs").
+3. **The control accepts.** 4 of 4 (gate is 75%).
+4. **No unresolved infrastructure voids.** One void occurred and was retried per the rule above; the retry was clean.
+
+The numbers (still n = 4, no verdict by the criteria above):
+
+| | Control | Ceremony | Learned |
+| --- | --- | --- | --- |
+| Mean weighted tokens | 64,435 | 118,919 | 122,049 |
+| Mean model calls | 6.8 | 12.0 | 13.0 |
+
+UI-GATES overhead is 84.6% of control here, against 123.6% in pilot 1 — the reduced ceremony lowered the *relative* cost even though total model calls were higher than pilot 1's for every arm, control included, which points at task-to-task variance rather than the fix. Learning shows no effect distinguishable from noise (learned cheaper in 1 of 4 pairs; interval −33,989 to 38,963). Consistent with the suite's stated limit: a ~2,000-token project gives a location index almost nothing to save.
+
+**Decision point.** The design is validated; a verdict needs 8+ pairs, which means the full 16-task suite (~50 runs, several hours sequential, roughly 4x this pilot's small cost). Given every measurement so far is consistent with "no saving on a project too small to search," and the suite cannot test search savings at all by its own stated limit, the full Workboard run is queued but not yet started; a search-heavy suite is likely the higher-priority next build.
 
 ## Analysis
 
