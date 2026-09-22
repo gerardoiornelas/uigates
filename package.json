@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "description": "UI-GATES: authority-aware learning for AI coding agents. Reference engine, `uigates` CLI and evidence-backed learning harness.",
   "private": true,
+  "license": "MIT",
   "author": "Gerardo I. Ornelas",
   "repository": "github:gerardoiornelas/uigates",
   "engines": {
