@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { analyze, bootstrap, CRITERIA, format } from './analyze.mjs';
-import { rng, shuffled } from './run.mjs';
+import { promptFor, rng, shuffled, SKILL_REQUEST } from './run.mjs';
 
 /**
  * The harness decides whether UI-GATES saves tokens and whether it learns, so the harness has to be
@@ -63,6 +63,15 @@ test('the verifier is pinned: if it differs from its recorded hash, nothing runs
   assert.equal(s.seen().length, 0, 'the agent was never started');
 });
 
+test('the treatment prompt is the control prompt plus one sentence, and neither forbids a tool\'s own state', () => {
+  const task = { id: 't', prompt: 'Create features/t.mjs.', allowedFiles: ['features/t.mjs'] };
+  const control = promptFor(task, 'control');
+  for (const arm of ['ceremony', 'learned']) assert.equal(promptFor(task, arm), `${SKILL_REQUEST}\n\n${control}`, 'the only difference is asking for the skill');
+  assert.match(control, /Only these project files may change: features\/t\.mjs/);
+  assert.match(control, /Dot-directories that tools keep their own state in/, 'the agent is not told that recording is a violation');
+  assert.doesNotMatch(control, /uigates/i, 'the control prompt does not mention the treatment');
+});
+
 test('the control is a control: none of UI-GATES is in its workspace, and the treatment arms have it', t => {
   const s = sandbox(t);
   const r = s.go();
@@ -71,12 +80,27 @@ test('the control is a control: none of UI-GATES is in its workspace, and the tr
   assert.equal(ev.length, 9);
   for (const row of ev.filter(x => x.arm === 'control')) assert.deepEqual(row.workspaceContains, [], 'the control workspace holds nothing of UI-GATES');
   for (const row of ev.filter(x => x.arm !== 'control')) {
-    assert.ok(row.workspaceContains.includes('.claude'), `${row.arm} has the skill`);
+    assert.ok(row.workspaceContains.includes('--plugin-dir'), `${row.arm} loads the plugin explicitly`);
     assert.ok(row.workspaceContains.includes('node_modules/.bin/uigates'), `${row.arm} has the command`);
+    assert.ok(!row.workspaceContains.includes('.claude'), `${row.arm}: the plugin is not left in the workspace for the agent to find`);
   }
   const seen = s.seen();
-  for (const e of seen.filter(x => x.arm === 'control')) assert.equal(e.slash, false, 'the control is not asked to use the skill');
-  for (const e of seen.filter(x => x.arm !== 'control')) assert.equal(e.slash, true);
+  for (const e of seen.filter(x => x.arm === 'control')) assert.ok(!e.args.includes('--plugin-dir'), 'the control is not given the plugin');
+  for (const e of seen.filter(x => x.arm === 'control')) assert.equal(e.asksForSkill, false, 'the control is not asked to use the skill');
+  for (const e of seen.filter(x => x.arm !== 'control')) assert.equal(e.asksForSkill, true, 'the treatment is asked in words');
+  for (const e of seen) assert.equal(e.literalSlash, false, 'headless mode does not expand a slash command, so none is sent');
+});
+
+test('every arm runs in the same isolated configuration, so the agent\'s own setup is not what differs', t => {
+  const s = sandbox(t);
+  assert.equal(s.go(['--tasks', 't1']).status, 0);
+  const seen = s.seen();
+  assert.ok(seen.length >= 5);
+  for (const e of seen) {
+    for (const flag of ['--strict-mcp-config', '--mcp-config', '--setting-sources', '--max-turns', '--output-format', '--allowedTools']) assert.ok(e.args.includes(flag), `${e.arm} missing ${flag}`);
+  }
+  const common = e => JSON.stringify(e.args.filter(a => a !== '--plugin-dir'));
+  for (const e of seen) assert.equal(common(e), common(seen[0]), 'the same flags, in the same order, for every arm, apart from loading the plugin');
 });
 
 test('only the learned arm sees the ledger, and it holds what the learning phase produced from both discovery tasks', t => {

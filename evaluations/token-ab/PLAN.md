@@ -47,7 +47,8 @@ Also recorded: model calls, tool calls by kind, discovery before the first edit,
 - One fresh workspace per run, copied from the frozen project; `git init`; no other run's files.
 - Arm order is shuffled per task with a recorded seed (`--seed`, default 20260921).
 - Provider settings (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `OPENAI_BASE_URL`) are removed from the agent's environment. The model is pinned with `--model` and recorded.
-- User-level Claude configuration is the same for every arm. It is not removed, so its fixed cost falls on all three equally.
+- The agent's own configuration is isolated identically for every arm: user-level MCP servers (`--strict-mcp-config` with an empty config) and user-level settings (`--setting-sources project`). This was learned from real runs: a user-level Serena server wrote a `.serena/` folder into the workspace and failed the run, and the fixed context per call was 37k tokens against 25k when isolated (a trivial call cost $0.076 against $0.023). Every extra turn re-reads that context, so a large fixed baseline changes what the ceremony costs. The choice is stated: results describe a lean environment, and UI-GATES' absolute overhead will be larger in a heavier one.
+- Headless mode does not expand slash commands, so the treatment is requested in words (one added sentence: "Use the uigates skill for this task.") and the plugin is loaded explicitly with `--plugin-dir`, from outside the workspace. A skills-directory plugin was not registered ("Unknown skill") in the first two real runs. The prompt tells every arm that dot-directories tools keep their state in are not project files; without that, the agent hesitated to record through the engine because it would write outside the allowed-files list.
 - A record is written for every run, failures and timeouts included, and **an arm is never rerun to get a better number**. A resumed run skips anything already recorded.
 - Acceptance is the external verifier passing, no file outside the allowed list changed, and the verifier's hash unchanged.
 
@@ -55,7 +56,7 @@ Also recorded: model calls, tool calls by kind, discovery before the first edit,
 
 The pilot is four tasks, one per family, plus the two discovery tasks (14 runs). It must pass all of these, or the design is fixed before anything is scored:
 
-1. **The skill loads in headless mode.** At least 90% of ceremony and learned runs used a uigates command. (The headless slash-command behaviour is unverified from here; this gate is where it gets verified.)
+1. **The skill loads in headless mode.** At least 90% of ceremony and learned runs used a uigates command. (Verified once on 2026-09-21 after two fixes; the pilot checks it holds.)
 2. **The brief reaches the learned arm.** The learned runs' `start` output contains "Earlier verified work".
 3. **The control accepts.** At least 75% of control runs pass the verifier, so cost is being compared on work that was done.
 4. **No infrastructure voids** (see below).

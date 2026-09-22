@@ -21,7 +21,12 @@ const REPO = path.resolve(HERE, '../..');
 const UIGATES_BIN = path.join(REPO, 'bin/uigates.mjs');
 const PLUGIN = path.join(REPO, 'plugins/uigates');
 export const ARMS = ['control', 'ceremony', 'learned'];
+export const SKILL_REQUEST = 'Use the uigates skill for this task.';
 const IGNORED = new Set(['.git', 'node_modules', '.claude', '.uigates', '.uig']);
+// The same for every arm. The agent's own configuration is not the thing under test: user-level MCP servers write files into the
+// workspace (Serena created .serena/ in the first real run) and add tool definitions to the context of every call, and user-level
+// settings add more. Removing both makes the fixed cost per call smaller, identical across arms, and repeatable.
+const ISOLATION = ['--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', 'project'];
 // A shell that exports a proxy or another provider's key would make the agent something other than Claude on Anthropic's API.
 const PROVIDER_ENV = ['ANTHROPIC_BASE_URL', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'OPENAI_BASE_URL'];
 
@@ -62,27 +67,31 @@ function prepareWorkspace(suite, arm, ledger) {
   const work = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'token-ab-')));
   fs.cpSync(suite.source, work, { recursive: true, filter: f => !['.git', 'node_modules'].includes(path.basename(f)) });
   spawnSync('git', ['init', '-q'], { cwd: work });
+  let pluginDir = null;
   if (arm !== 'control') {
-    const dest = path.join(work, '.claude/skills/uigates');
-    fs.mkdirSync(dest, { recursive: true });
-    fs.cpSync(path.join(PLUGIN, '.claude-plugin'), path.join(dest, '.claude-plugin'), { recursive: true });
-    fs.cpSync(path.join(PLUGIN, 'skills'), path.join(dest, 'skills'), { recursive: true });
+    // A skills-directory plugin under .claude/skills is not registered in headless mode ("Unknown skill": the first two real runs),
+    // so the plugin is loaded explicitly with --plugin-dir, from outside the workspace where the agent cannot trip over it.
+    pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), 'token-ab-plugin-'));
+    fs.cpSync(path.join(PLUGIN, '.claude-plugin'), path.join(pluginDir, '.claude-plugin'), { recursive: true });
+    fs.cpSync(path.join(PLUGIN, 'skills'), path.join(pluginDir, 'skills'), { recursive: true });
     const bin = path.join(work, 'node_modules/.bin');
     fs.mkdirSync(bin, { recursive: true });
     fs.writeFileSync(path.join(bin, 'uigates'), `#!/bin/sh\nexec node ${JSON.stringify(UIGATES_BIN)} "$@"\n`, { mode: 0o755 });
   }
   if (arm === 'learned' && ledger && fs.existsSync(ledger)) fs.cpSync(ledger, path.join(work, '.uigates/knowledge'), { recursive: true });
-  return work;
+  return { work, pluginDir };
 }
 
 export function promptFor(task, arm) {
   const body = [
     'Implement the requested feature in this local project. Work only in this workspace.',
-    `Only these files may change: ${task.allowedFiles.join(', ')}. Inspect project code as needed and run the project's local checks. Preserve existing behavior.`,
+    `Only these project files may change: ${task.allowedFiles.join(', ')}. Dot-directories that tools keep their own state in (such as .git) are not project files. Inspect project code as needed and run the project's local checks. Preserve existing behavior.`,
     task.prompt,
     'Finish with a concise description of what you did and any unresolved issues.',
   ].join('\n\n');
-  return arm === 'control' ? body : `/uigates:uigates ${body}`;
+  // Headless mode does not expand slash commands: `/uigates:uigates ...` arrives as literal text and the agent ignores it
+  // (the first real run did exactly that). The treatment is asked for in words, which is how a model-invoked skill is used.
+  return arm === 'control' ? body : `${SKILL_REQUEST}\n\n${body}`;
 }
 
 function cleanEnv(extra) {
@@ -94,11 +103,11 @@ function cleanEnv(extra) {
 const encodeCwd = dir => fs.realpathSync(dir).replace(/[^a-zA-Z0-9]/g, '-');
 
 function runOne({ suite, task, arm, phase, out, options, ledger, order }) {
-  const work = prepareWorkspace(suite, arm, ledger);
+  const { work, pluginDir } = prepareWorkspace(suite, arm, ledger);
   const before = snapshot(work);
-  const artifacts = uigatesArtifacts(work);
+  const artifacts = [...uigatesArtifacts(work), ...(pluginDir ? ['--plugin-dir'] : [])];
   const prompt = promptFor(task, arm);
-  const args = ['-p', prompt, '--output-format', 'json', '--max-turns', String(options.maxTurns), '--allowedTools', 'Bash,Edit,Write,Read,Grep,Glob', ...(options.model ? ['--model', options.model] : []), ...options.claudeArgs];
+  const args = ['-p', prompt, '--output-format', 'json', '--max-turns', String(options.maxTurns), '--allowedTools', 'Bash,Edit,Write,Read,Grep,Glob', ...ISOLATION, ...(pluginDir ? ['--plugin-dir', pluginDir] : []), ...(options.model ? ['--model', options.model] : []), ...options.claudeArgs];
   const startedAt = new Date().toISOString();
   const run = spawnSync(options.claude, args, {
     cwd: work, encoding: 'utf8', timeout: options.timeoutSec * 1000, maxBuffer: 256 * 1024 * 1024,
@@ -131,6 +140,7 @@ function runOne({ suite, task, arm, phase, out, options, ledger, order }) {
 
   // Did the treatment actually happen? A ceremony or learned run in which the agent never used UI-GATES is not evidence about UI-GATES.
   const compliance = { uigatesCommands: cost ? cost.toolCalls.ceremony : 0, ledgerReads: cost ? cost.ledgerReads : 0 };
+  if (pluginDir) fs.rmSync(pluginDir, { recursive: true, force: true });
   const record = {
     key: `${phase}:${task.id}:${arm}`, phase, task: task.id, family: task.family, arm, order,
     accepted: run.status === 0 && !result.is_error && verified.status === 0 && !unexpected.length && verifierBefore === verifierAfter,

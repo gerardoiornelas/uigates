@@ -10,13 +10,13 @@ const args = process.argv.slice(2);
 const prompt = args[args.indexOf('-p') + 1] ?? '';
 const cwd = fs.realpathSync(process.cwd());
 const has = p => fs.existsSync(path.join(cwd, p));
-const arm = has('.claude/skills/uigates') ? (has('.uigates/knowledge') ? 'learned' : 'ceremony') : 'control';
+const arm = args.includes('--plugin-dir') ? (has('.uigates/knowledge') ? 'learned' : 'ceremony') : 'control';
 const file = /features\/([\w-]+)\.mjs/.exec(prompt)?.[1] ?? 'unknown';
 const env = process.env;
 
 if (env.FAKE_LOG) {
   const ledger = has('.uigates/knowledge/compound_packs') ? fs.readdirSync(path.join(cwd, '.uigates/knowledge/compound_packs')).sort() : [];
-  fs.appendFileSync(env.FAKE_LOG, `${JSON.stringify({ arm, task: file, sawProviderEnv: !!(env.ANTHROPIC_BASE_URL || env.ANTHROPIC_API_KEY), ledger, slash: prompt.startsWith('/uigates:uigates'), args: args.filter(a => a.startsWith('--')) })}\n`);
+  fs.appendFileSync(env.FAKE_LOG, `${JSON.stringify({ arm, task: file, sawProviderEnv: !!(env.ANTHROPIC_BASE_URL || env.ANTHROPIC_API_KEY), ledger, asksForSkill: /Use the uigates skill/.test(prompt), literalSlash: prompt.startsWith('/'), args: args.filter(a => a.startsWith('--')) })}\n`);
 }
 
 if (env.FAKE_NO_WRITE !== '1') {
